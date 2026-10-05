@@ -1,10 +1,10 @@
 ---
 id: TASK-005
 title: Diagnose the pre-setup content-loading gap
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 04:55'
+updated_date: '2026-10-05 04:56'
 labels: []
 dependencies:
   - TASK-004

@@ -4,10 +4,22 @@ title: Diagnose the pre-setup content-loading gap
 status: In Progress
 assignee: []
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 04:56'
+updated_date: '2026-10-05 05:53'
 labels: []
 dependencies:
   - TASK-004
+modified_files:
+  - src/x2_load_profiler/bundle_load_patch.cs
+  - src/x2_load_profiler/bundle_load_stats.cs
+  - src/x2_load_profiler/unity_experiment_settings.cs
+  - src/x2_load_profiler/update_tasks_patch.cs
+  - src/x2_load_profiler/x2_load_profiler_lifecycle.cs
+  - tests/x2_load_profiler.tests/bundle_load_stats_tests.cs
+  - tests/x2_load_profiler.tests/unity_experiment_settings_tests.cs
+  - tests/x2_load_profiler.tests/x2_load_profiler.tests.csproj
+  - docs/diagnosis/run3-profiler.txt
+  - docs/diagnosis/run4-profiler.txt
+  - docs/diagnosis/run5-profiler.txt
 priority: high
 ordinal: 5000
 ---
@@ -55,3 +67,34 @@ OPEN QUESTIONS FOR LANCE
 
 APPROVAL RECORDED (Lance, 2026-10-04): Step 2 is approved, extend the profiler. Changing Unity settings at runtime from the mod is allowed as an experiment (backgroundLoadingPriority, asyncUploadTimeSlice, asyncUploadBufferSize, asyncUploadPersistentBuffer). The STATUS line above (DRAFT, NOT YET APPROVED) is superseded: the plan is approved as written. Measure first (step 3 baseline-style runs with the extended profiler), then run the Unity-settings experiment as separate runs so the diagnosis and the experiment are not mixed; record which settings values were used per run. Still stop and ask before adding acceptance criteria or creating follow-up tasks.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+HANDOFF PROGRESS (2026-10-05). Status stays In Progress; AC #1 not yet met (no report section written). Plan steps 1 to 3 are mostly done; step 4 (decision) and step 5 (report) remain.
+
+DONE
+- Step 1: mined run1/run2 profiler lines. Plateau (~13 s, processing 2500 to 2700): 37 and 34 completions per second, UpdateTasks 3.8% of wall time, avg frame 17.5 ms. Burst (~5 s): 507 and 512 completions per second, UpdateTasks 5.8%. Case 1 (per-frame polling) is ruled out. The old counters could not separate case 2 from case 3.
+- Step 2: profiler extended, TDD, 25 unit tests pass. New per-second fields: bundleStarted, bundleDone, bundleInFlight, bundleBlockedPolls (CanStart false), bundleMeanMs, bundleMaxMs (Harmony patches in src/x2_load_profiler/bundle_load_patch.cs, aggregation in bundle_load_stats.cs). One-time UnitySettings line at mod load. Config switch: Mods/x2_load_profiler/unity_experiment.txt (key=value for backgroundLoadingPriority, asyncUploadTimeSlice, asyncUploadBufferSize, asyncUploadPersistentBuffer; parser in unity_experiment_settings.cs); logs an 'Experiment applied from <path>' line. Slow-load logging: any bundle load >= 500 ms logs 'SlowBundle ms= type= asset='. Skipped plan items (d) post-processing time and (e) main-thread time outside UpdateTasks, because UpdateTasks is only ~4% of the plateau; add them only if the new data does not settle it.
+- Commits: 69af962, 44c1853, 80ce0c5 (fixes an ArgumentException: Assembly.Location is empty for in-memory mod assemblies), 47656f7 (slow-load logging), 854d131 (raw run 3 to 5 lines).
+
+RESULTS (raw per-second lines in docs/diagnosis/run3|run4|run5-profiler.txt; run5 is the High-priority run; the first run5 attempt was invalid because of the Assembly.Location bug and was discarded)
+- Run 3 (default, BelowNormal): gap 21.2 s. Run 4 (default): gap 20.2 s. Run 5 (backgroundLoadingPriority=High): gap 19.8 s, queue to playable 43.4 s vs 43.0 s. Patterns and bundle counts are essentially identical across all three (plateau 911/911/914 bundle loads, mean start-to-done 362/361/360 ms; burst 2734/2734/2732 loads, mean 50/51/52 ms; whole gap 5497 loads each). The load is deterministic for this save.
+- bundleInFlight is exactly 25 in every second of the gap (the CM_MAX_CONCURRENT_ASSET_BUNDLE_FILES_LOADING cap is always saturated), with about 2600 blocked CanStart polls per frame in the plateau, costing ~4% of wall time.
+- Throughput tracks 25 / per-load latency (Little's law): about 35 per second when loads take 0.4 to 1.0 s (plateau), 500 to 900 per second when they take 20 to 80 ms (burst). So the gap is dominated by per-load start-to-done latency, not polling.
+- backgroundLoadingPriority=High did NOT change anything, so that hypothesis is falsified. asyncUploadTimeSlice, asyncUploadBufferSize and persistent buffer are untested. Defaults: BelowNormal, timeslice 2, buffer 64, persistent true, targetFrameRate 60, vSyncCount 1. Frames sit at the 60 fps cap (16.4 ms).
+- The earlier cap-200 test (gap 2 to 3 s shorter) has not been repeated with the new counters. Repeating it would show whether per-load latency scales with in-flight count (Unity serializes loads) or not.
+
+SEPARATE OBSERVATION (outside this task's scope): main-thread stalls after the content gap with UpdateTasks idle: a 1.1 s frame at ~+30 s, 0.7 s at ~+35 s, 0.4 s at ~+38 s after the load command, in the same places in runs 3, 4 and 5. Lance's screen recording (not in repo; ~43 s total) shows the loading bar at 90% for ~16 s (video 71 to 86 s), then 94%, then playable; Lance says it hitches at multiple spots including 94%. Do NOT create follow-up tasks without asking Lance.
+
+IN FLIGHT
+- Run 6 (defaults, slow-bundle logging, no experiment overrides) was about to start; Lance launches the game via Steam and loads the save. unity_experiment.txt currently holds only a comment line. When Lance says it is done, with the game CLOSED move $DATA/Logs/output.log* into a named folder (e.g. Logs/run6-slowbundle). Confirm the save from the 'Queued LoadGameCommand' line and check for new errors (baseline is 5 [ERROR] lines and 20 state-loss matches). Extract the SlowBundle lines and group by type and asset path to see what the ~900 plateau loads have in common. Compare the gap against 19.8 to 21.2 s to see whether the extra logging perturbs timing.
+
+NEXT
+1. Analyse run 6 slow-bundle data. 2. Optional experiments, one variable per run, recorded in the report: cap 200 via optimizing.json (original is {}), asyncUploadTimeSlice up, asyncUploadBufferSize up. 3. Apply the decision rule from plan step 4 and write the finding with numbers into docs/load-time-report.md (new section, one-line paragraphs, tables like the baseline section), tick AC #1, set Done with a final summary. 4. Commit docs and backlog separately (conventional commits, no attribution trailers).
+
+MACHINE STATE
+- optimizing.json is {}. log4net.xml is still DEBUG with AssetTask at WARN (restore from log4net.xml.orig only when all measuring is finished). Mods/x2_load_profiler/unity_experiment.txt is comment-only. Archived logs under $DATA/Logs: run1-baseline, run2-baseline, run3-diag, run4-diag, run5-invalid, run5-high (the High run).
+- The game must be closed before moving logs. The csproj copies the mod build into the mod folder after every build (dotnet via ~/.local/bin/mise exec, DOTNET_ROOT=~/.local/share/mise/dotnet-root).
+- Log lines wrap, so the timestamp is on the line before the message. The raw files in docs/diagnosis show the extraction format (paste line pairs, strip the logger prefix).
+<!-- SECTION:NOTES:END -->

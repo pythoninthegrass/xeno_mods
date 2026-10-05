@@ -21,18 +21,18 @@ namespace X2LoadProfiler {
 
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
-            ApplyExperiment(mod);
+            try {
+                ApplyExperiment(mod);
+            } catch (Exception e) {
+                Log.Warn($"[X2LoadProfiler] Experiment failed: {e}");
+            }
             Log.Warn($"[X2LoadProfiler] UnitySettings backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}");
         }
 
         private static void ApplyExperiment(Mod mod) {
-            string[] candidates = {
-                Path.Combine(mod.ContentPack, ExperimentFileName),
-                Path.Combine(Path.GetDirectoryName(typeof(X2LoadProfilerLifecycle).Assembly.Location) ?? "", "..", "..", ExperimentFileName),
-            };
-            string? path = candidates.FirstOrDefault(File.Exists);
-            if (path == null) {
-                Log.Warn($"[X2LoadProfiler] Experiment file {ExperimentFileName} not found in: {string.Join(" | ", candidates)}");
+            string path = Path.Combine(mod.ContentPack, ExperimentFileName);
+            if (!File.Exists(path)) {
+                Log.Warn($"[X2LoadProfiler] Experiment file not found: {path}");
                 return;
             }
 

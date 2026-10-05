@@ -49,9 +49,7 @@ INTRO_MARKER = "XenonautsLoadScreen: Intro Complete"
 LOSE_FOCUS_MARKER = "LoadingWorld - Handled LoseFocusScreenReport"
 
 HEADER_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}) \[(\w+)\] ")
-QUEUED_PATH_RE = re.compile(
-    r"SaveGameDescriptor: (?:FD\[[A-Z]+\]>)?FileSystem::(.+?)\)?\s*$"
-)
+QUEUED_PATH_RE = re.compile(r"SaveGameDescriptor: (?:FD\[[A-Z]+\]>)?FileSystem::(.+?)\)?\s*$")
 RUN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
@@ -143,9 +141,7 @@ class Settings:
 
     @property
     def steam_console_log(self) -> Path:
-        return (
-            self.bottle / "Program Files (x86)" / "Steam" / "logs" / "console_log.txt"
-        )
+        return self.bottle / "Program Files (x86)" / "Steam" / "logs" / "console_log.txt"
 
 
 def parse_entries(text: str) -> list[Entry]:
@@ -187,14 +183,10 @@ def queued_save_path(entries: list[Entry]) -> str | None:
 
 
 def is_expected_save(path: str | None, save_rel: str) -> bool:
-    return path is not None and path.replace("\\", "/").endswith(
-        save_rel.replace("\\", "/")
-    )
+    return path is not None and path.replace("\\", "/").endswith(save_rel.replace("\\", "/"))
 
 
-def find_timings(
-    entries: list[Entry], playable_marker: str = DEFAULT_PLAYABLE_MARKER
-) -> Timings:
+def find_timings(entries: list[Entry], playable_marker: str = DEFAULT_PLAYABLE_MARKER) -> Timings:
     queued = next((e.ts for e in entries if QUEUED_MARKER in e.message), None)
     if queued is None:
         return Timings(None, None, None, None, None)
@@ -202,12 +194,8 @@ def find_timings(
     setup = next((e.ts for e in after if SETUP_MARKER in e.message), None)
     playable = next((e.ts for e in after if playable_marker in e.message), None)
     before_setup = [e for e in after if setup is None or e.ts <= setup]
-    intro = next(
-        (e.ts for e in reversed(before_setup) if INTRO_MARKER in e.message), None
-    )
-    lose_focus = next(
-        (e.ts for e in reversed(before_setup) if LOSE_FOCUS_MARKER in e.message), None
-    )
+    intro = next((e.ts for e in reversed(before_setup) if INTRO_MARKER in e.message), None)
+    lose_focus = next((e.ts for e in reversed(before_setup) if LOSE_FOCUS_MARKER in e.message), None)
     return Timings(queued, setup, playable, intro, lose_focus)
 
 
@@ -226,10 +214,7 @@ def leftover_archive_name(run_name: str, prefix: str) -> str:
 def cloud_sync_blocked(console_log: str) -> bool:
     """True when the latest syncfailed line has no later completed launch after it."""
     failed = console_log.rfind("syncfailed")
-    return (
-        failed != -1
-        and console_log.rfind("LaunchApp changed task to Completed") < failed
-    )
+    return failed != -1 and console_log.rfind("LaunchApp changed task to Completed") < failed
 
 
 def parse_point(text: str) -> tuple[int, int]:
@@ -245,23 +230,15 @@ def auto_load_text(save_path: str) -> str:
 
 def validate_run_name(name: str) -> None:
     if not RUN_NAME_RE.fullmatch(name) or name in {".", ".."}:
-        raise ValueError(
-            f"invalid run name {name!r}: use letters, digits, '.', '_' and '-' only"
-        )
+        raise ValueError(f"invalid run name {name!r}: use letters, digits, '.', '_' and '-' only")
 
 
 def hash_files(paths: list[Path]) -> dict[Path, str | None]:
-    return {
-        p: sha256(p.read_bytes()).hexdigest() if p.is_file() else None for p in paths
-    }
+    return {p: sha256(p.read_bytes()).hexdigest() if p.is_file() else None for p in paths}
 
 
-def changed_files(
-    before: Mapping[Path, str | None], after: Mapping[Path, str | None]
-) -> list[Path]:
-    return sorted(
-        p for p in before.keys() | after.keys() if before.get(p) != after.get(p)
-    )
+def changed_files(before: Mapping[Path, str | None], after: Mapping[Path, str | None]) -> list[Path]:
+    return sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p))
 
 
 class _MappingRepository:
@@ -295,9 +272,7 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
     )
     data_dir = path(
         "DATA_DIR",
-        str(
-            bottle / "users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"
-        ),
+        str(bottle / "users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"),
     )
     return Settings(
         bottle=bottle,
@@ -311,37 +286,23 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         menu_save_row=parse_point(config("MENU_SAVE_ROW", default="947,426")),
         menu_load_save=parse_point(config("MENU_LOAD_SAVE", default="960,1112")),
         mod_name=config("MOD_NAME", default=DEFAULT_MOD_NAME),
-        leftover_archive_prefix=config(
-            "LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX
-        ),
-        state_loss_pattern=config(
-            "STATE_LOSS_PATTERN", default=DEFAULT_STATE_LOSS_PATTERN
-        ),
+        leftover_archive_prefix=config("LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX),
+        state_loss_pattern=config("STATE_LOSS_PATTERN", default=DEFAULT_STATE_LOSS_PATTERN),
         playable_marker=config("PLAYABLE_MARKER", default=DEFAULT_PLAYABLE_MARKER),
-        menu_ready_marker=config(
-            "MENU_READY_MARKER", default=DEFAULT_MENU_READY_MARKER
-        ),
-        game_process_pattern=config(
-            "GAME_PROCESS_PATTERN", default=DEFAULT_GAME_PROCESS_PATTERN
-        ),
-        steam_process_pattern=config(
-            "STEAM_PROCESS_PATTERN", default=DEFAULT_STEAM_PROCESS_PATTERN
-        ),
+        menu_ready_marker=config("MENU_READY_MARKER", default=DEFAULT_MENU_READY_MARKER),
+        game_process_pattern=config("GAME_PROCESS_PATTERN", default=DEFAULT_GAME_PROCESS_PATTERN),
+        steam_process_pattern=config("STEAM_PROCESS_PATTERN", default=DEFAULT_STEAM_PROCESS_PATTERN),
         quit_grace=config("QUIT_GRACE", default=15, cast=int),
         poll_interval=config("POLL_INTERVAL", default=0.5, cast=float),
     )
 
 
 def game_pids(s: Settings) -> list[int]:
-    result = subprocess.run(
-        ["pgrep", "-f", s.game_process_pattern], capture_output=True, text=True
-    )
+    result = subprocess.run(["pgrep", "-f", s.game_process_pattern], capture_output=True, text=True)
     return [int(p) for p in result.stdout.split()]
 
 
-def wait_until(
-    predicate: Callable[[], bool], timeout_s: float, poll_interval: float
-) -> bool:
+def wait_until(predicate: Callable[[], bool], timeout_s: float, poll_interval: float) -> bool:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         if predicate():
@@ -365,19 +326,10 @@ def stop_game(s: Settings) -> None:
 def preflight(s: Settings) -> None:
     if not s.launcher_app.exists():
         raise RunError(f"launcher app not found: {s.launcher_app}")
-    if (
-        subprocess.run(
-            ["pgrep", "-f", s.steam_process_pattern], capture_output=True
-        ).returncode
-        != 0
-    ):
+    if subprocess.run(["pgrep", "-f", s.steam_process_pattern], capture_output=True).returncode != 0:
         raise RunError("CrossOver Steam is not running; start it and log in first")
-    if s.steam_console_log.exists() and cloud_sync_blocked(
-        s.steam_console_log.read_text(errors="replace")
-    ):
-        raise RunError(
-            "Steam console_log.txt reports a failed cloud sync; disable Steam Cloud sync for Xenonauts 2"
-        )
+    if s.steam_console_log.exists() and cloud_sync_blocked(s.steam_console_log.read_text(errors="replace")):
+        raise RunError("Steam console_log.txt reports a failed cloud sync; disable Steam Cloud sync for Xenonauts 2")
 
 
 def archive_leftover_logs(s: Settings, run_name: str) -> None:
@@ -395,12 +347,8 @@ def read_log(s: Settings) -> str:
     return log.read_text(errors="replace") if log.exists() else ""
 
 
-def wait_for_log(
-    s: Settings, predicate: Callable[[list[Entry]], bool], timeout_s: float
-) -> bool:
-    return wait_until(
-        lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval
-    )
+def wait_for_log(s: Settings, predicate: Callable[[list[Entry]], bool], timeout_s: float) -> bool:
+    return wait_until(lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval)
 
 
 JXA_CLICK = """
@@ -421,9 +369,7 @@ click(%d, %d);
 
 
 def click(point: tuple[int, int]) -> None:
-    subprocess.run(
-        ["osascript", "-l", "JavaScript", "-e", JXA_CLICK % point], check=True
-    )
+    subprocess.run(["osascript", "-l", "JavaScript", "-e", JXA_CLICK % point], check=True)
 
 
 def menu_load(s: Settings) -> None:
@@ -457,18 +403,12 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
         lambda es: queued_save_path(es) is not None,
         s.launch_timeout + s.load_timeout,
     ):
-        raise RunError(
-            "no 'Queued LoadGameCommand' line appeared; the save was never loaded"
-        )
+        raise RunError("no 'Queued LoadGameCommand' line appeared; the save was never loaded")
     queued = queued_save_path(parse_entries(read_log(s)))
     if not is_expected_save(queued, s.save_rel):
         raise RunError(f"wrong save loaded: expected {s.save_rel}, log shows {queued}")
-    if not wait_for_log(
-        s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout
-    ):
-        raise RunError(
-            f"playable marker not reached within {s.load_timeout} s of the save being queued"
-        )
+    if not wait_for_log(s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout):
+        raise RunError(f"playable marker not reached within {s.load_timeout} s of the save being queued")
     text = read_log(s)
     stop_game(s)
 
@@ -477,9 +417,7 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     for f in sorted(s.logs_dir.glob("output.log*")):
         shutil.move(f, dest / f.name)
     print(f"logs archived to {dest}")
-    print(
-        f"errors: {count_errors(text)}, state-loss: {count_state_loss(text, s.state_loss_pattern)}"
-    )
+    print(f"errors: {count_errors(text)}, state-loss: {count_state_loss(text, s.state_loss_pattern)}")
     return find_timings(parse_entries(text), s.playable_marker)
 
 
@@ -495,9 +433,7 @@ def print_timings(t: Timings) -> None:
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(
-        description="Run one cold measurement run of Xenonauts 2."
-    )
+    parser = argparse.ArgumentParser(description="Run one cold measurement run of Xenonauts 2.")
     parser.add_argument("run_name")
     parser.add_argument("--load", choices=["auto", "menu"], default="auto")
     args = parser.parse_args(argv)
@@ -535,11 +471,7 @@ def main(argv: list[str]) -> int:
         s.auto_load_file.unlink(missing_ok=True)
         modified = changed_files(before, hash_files(s.guarded_config_files))
         if modified:
-            failure = (
-                (failure + "; " if failure else "")
-                + "config files modified: "
-                + ", ".join(str(p) for p in modified)
-            )
+            failure = (failure + "; " if failure else "") + "config files modified: " + ", ".join(str(p) for p in modified)
 
     if failure:
         print(f"error: {failure}", file=sys.stderr)

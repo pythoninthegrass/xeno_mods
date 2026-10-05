@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>X2LoadTiming</RootNamespace>
+    <AssemblyName>X2LoadTiming</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(CacheFolder)/0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="log4net">
+      <HintPath>$(CacheFolder)/log4net.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameFolder)/Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(GameFolder)/Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameFolder)/UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameFolder)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Install the manifest, DLL and PDB into the game's local mod folder after every build -->
+  <Target Name="CopyOutputToModFolder" AfterTargets="Build">
+    <ItemGroup>
+      <BuiltArtifacts Include="$(TargetPath)" />
+      <BuiltArtifacts Include="$(TargetDir)$(TargetName).pdb" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BuiltArtifacts)" DestinationFolder="$(ModInstanceFolder)/assembly/common" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/manifest.json" DestinationFolder="$(ModInstanceFolder)" />
+  </Target>
+
+</Project>

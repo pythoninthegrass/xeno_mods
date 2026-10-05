@@ -14,6 +14,14 @@
         "@upstash/context7-mcp"
       ]
     },
+    "osascript": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/pythoninthegrass/osascript-mcp",
+        "osascript-mcp"
+      ]
+    },
     "serena": {
       "command": "uvx",
       "args": [

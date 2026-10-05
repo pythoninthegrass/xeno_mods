@@ -203,6 +203,14 @@ def count_errors(text: str) -> int:
     return sum(1 for e in parse_entries(text) if e.level == "ERROR")
 
 
+def count_state_loss(text: str) -> int:
+    return len(re.findall("state-loss", text, re.IGNORECASE))
+
+
+def leftover_archive_name(run_name: str) -> str:
+    return f"pre-{run_name}"
+
+
 def parse_point(text: str) -> tuple[int, int]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 2:
@@ -333,11 +341,11 @@ def preflight(s: Settings) -> None:
         )
 
 
-def archive_leftover_logs(s: Settings) -> None:
+def archive_leftover_logs(s: Settings, run_name: str) -> None:
     leftovers = sorted(s.logs_dir.glob("output.log*"))
     if not leftovers:
         return
-    dest = s.logs_dir / f"archive-{datetime.now():%Y%m%d-%H%M%S}"
+    dest = s.logs_dir / leftover_archive_name(run_name)
     dest.mkdir(parents=True)
     for f in leftovers:
         shutil.move(f, dest / f.name)
@@ -395,7 +403,7 @@ def menu_load(s: Settings) -> None:
 def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     s.logs_dir.mkdir(parents=True, exist_ok=True)
     stop_game()
-    archive_leftover_logs(s)
+    archive_leftover_logs(s, run_name)
     if load == "auto":
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
     print(f"launching {s.launcher_app.name} (load={load})")
@@ -430,7 +438,7 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     for f in sorted(s.logs_dir.glob("output.log*")):
         shutil.move(f, dest / f.name)
     print(f"logs archived to {dest}")
-    print(f"errors: {count_errors(text)}")
+    print(f"errors: {count_errors(text)}, state-loss: {count_state_loss(text)}")
     return find_timings(parse_entries(text))
 
 
@@ -456,8 +464,9 @@ def main(argv: list[str]) -> int:
     try:
         validate_run_name(args.run_name)
         s = load_settings(Path.cwd())
-        if (s.logs_dir / args.run_name).exists():
-            raise RunError(f"{s.logs_dir / args.run_name} already exists")
+        for taken in (args.run_name, leftover_archive_name(args.run_name)):
+            if (s.logs_dir / taken).exists():
+                raise RunError(f"{s.logs_dir / taken} already exists")
         preflight(s)
     except (ValueError, RunError) as exc:
         print(f"error: {exc}", file=sys.stderr)

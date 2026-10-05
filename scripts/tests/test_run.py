@@ -163,6 +163,27 @@ class CountErrorsTests(unittest.TestCase):
         )
 
 
+class CountStateLossTests(unittest.TestCase):
+    def test_counts_every_occurrence_including_the_wrapped_exception_report(self):
+        text = entry(
+            "2026-10-05 01:00:00,000",
+            "[FSM state-loss:inaccessible] state entity deleted",
+            level="ERROR",
+        ) + entry(
+            "2026-10-05 01:00:01,000",
+            "Handled ExceptionReport: SyntheticException : [FSM state-loss:inaccessible] x",
+        )
+        self.assertEqual(run.count_state_loss(text), 2)
+
+    def test_zero_without_matches(self):
+        self.assertEqual(run.count_state_loss(LOG), 0)
+
+
+class ArchiveNameTests(unittest.TestCase):
+    def test_leftover_logs_are_filed_under_the_run_name(self):
+        self.assertEqual(run.leftover_archive_name("run7-auto"), "pre-run7-auto")
+
+
 class ConfigTests(unittest.TestCase):
     def test_defaults_without_an_env_file(self):
         with tempfile.TemporaryDirectory() as d:

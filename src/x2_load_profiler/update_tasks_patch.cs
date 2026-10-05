@@ -27,7 +27,8 @@ namespace X2LoadProfiler {
             }
 
             var s = Stats.Last;
-            Log.Warn($"[X2LoadProfiler] frames={s.Frames} updateMs={s.UpdateMs:F1} processing={s.Processing} pending={s.Pending} completed={s.Completed} wallMsPerFrame={s.WallMsPerFrame:F1}");
+            var b = BundleLoadTracker.Stats.TakeSnapshot(BundleLoadTracker.InFlight);
+            Log.Warn($"[X2LoadProfiler] frames={s.Frames} updateMs={s.UpdateMs:F1} processing={s.Processing} pending={s.Pending} completed={s.Completed} wallMsPerFrame={s.WallMsPerFrame:F1} bundleStarted={b.Started} bundleDone={b.Completed} bundleInFlight={b.InFlight} bundleBlockedPolls={b.BlockedPolls} bundleMeanMs={b.MeanLatencyMs:F0} bundleMaxMs={b.MaxLatencyMs:F0}");
         }
     }
 

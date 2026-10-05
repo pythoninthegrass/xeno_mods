@@ -8,6 +8,7 @@ using Common.Content;
 using Common.Modding;
 using HarmonyLib;
 using log4net;
+using UnityEngine;
 
 namespace X2LoadProfiler {
 
@@ -17,6 +18,7 @@ namespace X2LoadProfiler {
 
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
+            Log.Warn($"[X2LoadProfiler] UnitySettings backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}");
         }
 
         public void Destroy() {

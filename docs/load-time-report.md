@@ -115,3 +115,21 @@ Eight times the concurrency gives 1.55 times the throughput and 6.6 times the pe
 In run 8 the 723 loads of 500 ms or more are not one asset: 247 strategy textures, 147 strategy templates, 108 common templates, 53 groundcombat templates, 38 groundcombat prefabs, 26 common UI prefabs. No single bundle or type explains the plateau.
 
 The remaining cost after the gap (about 20 s from setup to playable) and the hitches at about +30, +35 and +38 s after the load command are outside this finding. `asyncUploadTimeSlice` and `asyncUploadBufferSize` were not tested.
+
+## Fix result: mod on and off
+
+The fix is a Harmony postfix on `AssetBundleFileLoadOperation.CanStart` in `x2_load_profiler` (`src/x2_load_profiler/bundle_concurrency_patch.cs`) that raises the concurrent bundle load cap from the game's 25 to 200. `Mods/x2_load_profiler/bundle_cap.txt` holds an optional integer override, 0 means unlimited, and the mod never lowers the game's own cap. Run 10 (auto-load) confirms the same 8808 bundle loads and the same 5 `[ERROR]` lines as run 8 without the fix.
+
+All four runs below are cold, menu-loaded through `scripts/run.py --load menu`, same save, `log4net.xml` still at DEBUG with `AssetTask` at WARN, `optimizing.json` restored. Mod off means the `x2_load_profiler` pack set to `Enabled: false` in `contentpacks.json` (confirmed by zero `X2LoadProfiler` log lines). Every run has 5 `[ERROR]` lines and 20 state-loss matches.
+
+| Run | Condition | Intro to setup | Queue to playable |
+|---|---|---|---|
+| run11-on-menu | mod on | 20.03 s | 40.01 s |
+| run12-on-menu | mod on | 20.13 s | 39.75 s |
+| run13-off-menu | mod off | 22.50 s | 41.93 s |
+| run14-off-menu | mod off | 22.58 s | 42.19 s |
+| Mean, on | | 20.08 s | 39.88 s |
+| Mean, off | | 22.54 s | 42.06 s |
+| Difference | | -2.46 s (-11%) | -2.18 s (-5%) |
+
+The earlier baselines (21.3 s LoseFocus-to-setup gap, 42 to 43 s total) agree with the mod-off arm. The gain is about 2.2 to 2.5 s, smaller than the 3.8 s seen between runs 8 and 9 because those two used different intro anchors and a single sample each. Warm loads (a second load in the same session) were not measured, since `scripts/run.py` performs one cold load per launch.

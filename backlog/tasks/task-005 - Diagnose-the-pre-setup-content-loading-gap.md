@@ -1,10 +1,10 @@
 ---
 id: TASK-005
 title: Diagnose the pre-setup content-loading gap
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 06:53'
+updated_date: '2026-10-05 07:31'
 labels: []
 dependencies:
   - TASK-004
@@ -32,7 +32,7 @@ Step 4 of docs/PLAN.md. From the per-second lines decide whether the cost is per
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Finding stated with numbers in docs/load-time-report.md
+- [x] #1 Finding stated with numbers in docs/load-time-report.md
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -106,3 +106,9 @@ EXPERIMENTS AND CONFIG GUARD: run.py hashes optimizing.json ($GAME_DIR), Mods/x2
 
 CORROBORATING LOGS: run.py prints, per run, the [ERROR] count, the state-loss count (case-insensitive 'state-loss'), queue to setup, queue to playable, last XenonautsLoadScreen Intro Complete to Setup, and LoseFocus to Setup (n/a under auto-load because the LoseFocus line does not exist). Baseline to compare: 5 [ERROR] lines, 20 state-loss matches, queue to setup 22.8 to 23.4 s, queue to playable 42.0 to 43.4 s, intro to setup 22.55 to 22.80 s. Automated auto-load runs so far: run6-auto (intro to setup 22.40 s, queue to playable 43.61 s) and run7-auto (22.82 s, 45.23 s), both 5 errors and 20 state-loss, in $DATA/Logs. The old 19.8 to 21.2 s figure in this task is LoseFocus to Setup from menu-loaded runs 3 to 5 and cannot be compared with auto-loaded runs; compare auto-loaded runs on intro to setup, and compare the profiler per-second lines (bundleInFlight, bundleMeanMs, completions) as before. Corroborate each run beyond the printed numbers: (a) confirm the save from the 'Queued LoadGameCommand' line in Logs/<run-name>/output.log (the script already fails on a mismatch, but spot-check it; the descriptor logs as FD[UNRESOLVED]>FileSystem::<path> under auto-load and FileSystem::<path> from the menu), (b) log lines wrap so the timestamp is on the line before the message, (c) check that the profiler's Experiment applied line matches what you set, (d) check for new [ERROR] records beyond the five baseline ones, and (e) extract SlowBundle lines and the per-second profiler lines into docs/diagnosis the same way as runs 3 to 5. Auto-load queues the command while the boot loading screen's outro is still running and the game logs one 'MoveTo GroundCombat Skip: The previous MoveTo is still animating' line; that is expected and not an error. Because auto-load shifts the start slightly relative to menu-loaded runs 1 to 5, treat a difference under about 0.5 s on intro to setup as noise (run6 and run7 differ by 0.42 s) and repeat a run before drawing a conclusion from a smaller delta.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Gap is dominated by per-bundle start-to-done latency with the 25-wide cap always saturated, not by UpdateTasks polling (about 4 to 6% of wall time). Runs 3 to 5 show a deterministic 5497-load gap; backgroundLoadingPriority=High changed nothing. Runs 8 (cap 25) and 9 (cap 200) on the auto-load route: intro to setup 23.60 s vs 19.80 s, same 8808 loads, throughput x1.55 but mean latency x6.6, so Unity serializes the work and the cap is a weak lever. Slow loads are spread across textures, templates and prefabs. asyncUploadTimeSlice and asyncUploadBufferSize untested; cap 200 is a single run. Written up in docs/load-time-report.md; raw lines in docs/diagnosis.
+<!-- SECTION:FINAL_SUMMARY:END -->

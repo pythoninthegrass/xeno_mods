@@ -102,8 +102,8 @@ class Settings:
     data_dir: Path
     launcher_app: Path
     save_rel: str
-    launch_timeout_s: int
-    load_timeout_s: int
+    launch_timeout: int
+    load_timeout: int
     menu_load_game: tuple[int, int]
     menu_save_row: tuple[int, int]
     menu_load_save: tuple[int, int]
@@ -296,8 +296,8 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         data_dir=data_dir,
         launcher_app=path("LAUNCHER_APP", DEFAULT_LAUNCHER_APP),
         save_rel=config("SAVE_REL", default=DEFAULT_SAVE_REL),
-        launch_timeout_s=config("LAUNCH_TIMEOUT_S", default=60, cast=int),
-        load_timeout_s=config("LOAD_TIMEOUT_S", default=120, cast=int),
+        launch_timeout=config("LAUNCH_TIMEOUT", default=60, cast=int),
+        load_timeout=config("LOAD_TIMEOUT", default=120, cast=int),
         menu_load_game=parse_point(config("MENU_LOAD_GAME", default="1331,1302")),
         menu_save_row=parse_point(config("MENU_SAVE_ROW", default="947,426")),
         menu_load_save=parse_point(config("MENU_LOAD_SAVE", default="960,1112")),
@@ -422,11 +422,9 @@ def menu_load(s: Settings) -> None:
     if not wait_for_log(
         s,
         lambda es: any(s.menu_ready_marker in e.message for e in es),
-        s.launch_timeout_s,
+        s.launch_timeout,
     ):
-        raise RunError(
-            f"main menu was not ready within {s.launch_timeout_s} s of launch"
-        )
+        raise RunError(f"main menu was not ready within {s.launch_timeout} s of launch")
     time.sleep(1)
     for point in (s.menu_load_game, s.menu_save_row, s.menu_load_save):
         click(point)
@@ -441,15 +439,15 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
     print(f"launching {s.launcher_app.name} (load={load})")
     subprocess.run(["open", str(s.launcher_app)], check=True)
-    if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout_s, s.poll_interval):
-        raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout_s} s")
+    if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout, s.poll_interval):
+        raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout} s")
     if load == "menu":
         menu_load(s)
 
     if not wait_for_log(
         s,
         lambda es: queued_save_path(es) is not None,
-        s.launch_timeout_s + s.load_timeout_s,
+        s.launch_timeout + s.load_timeout,
     ):
         raise RunError(
             "no 'Queued LoadGameCommand' line appeared; the save was never loaded"
@@ -458,10 +456,10 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     if not is_expected_save(queued, s.save_rel):
         raise RunError(f"wrong save loaded: expected {s.save_rel}, log shows {queued}")
     if not wait_for_log(
-        s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout_s
+        s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout
     ):
         raise RunError(
-            f"playable marker not reached within {s.load_timeout_s} s of the save being queued"
+            f"playable marker not reached within {s.load_timeout} s of the save being queued"
         )
     text = read_log(s)
     stop_game(s)

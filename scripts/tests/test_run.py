@@ -189,10 +189,10 @@ class ArchiveNameTests(unittest.TestCase):
 class ConfigTests(unittest.TestCase):
     def test_precedence_is_process_env_then_env_file_then_default(self):
         with tempfile.TemporaryDirectory() as d:
-            (Path(d) / ".env").write_text("LOAD_TIMEOUT_S=7\nLAUNCH_TIMEOUT_S=8\n")
-            s = run.load_settings(Path(d), env={"LOAD_TIMEOUT_S": "5"})
-        self.assertEqual(s.load_timeout_s, 5)
-        self.assertEqual(s.launch_timeout_s, 8)
+            (Path(d) / ".env").write_text("LOAD_TIMEOUT=7\nLAUNCH_TIMEOUT=8\n")
+            s = run.load_settings(Path(d), env={"LOAD_TIMEOUT": "5"})
+        self.assertEqual(s.load_timeout, 5)
+        self.assertEqual(s.launch_timeout, 8)
         self.assertEqual(s.quit_grace, 15)
 
     def test_naming_and_marker_settings_have_defaults_and_can_be_overridden(self):
@@ -223,21 +223,21 @@ class ConfigTests(unittest.TestCase):
     def test_defaults_without_an_env_file(self):
         with tempfile.TemporaryDirectory() as d:
             s = run.load_settings(Path(d), env={})
-        self.assertEqual(s.load_timeout_s, 120)
+        self.assertEqual(s.load_timeout, 120)
         self.assertEqual(s.save_rel, SAVE_REL)
         self.assertTrue(str(s.data_dir).endswith("Goldhawk Interactive/Xenonauts 2"))
 
     def test_env_file_in_the_calling_directory_overrides_defaults(self):
         with tempfile.TemporaryDirectory() as d:
-            (Path(d) / ".env").write_text("LOAD_TIMEOUT_S=7\nSAVE_REL=Saves/x.json\n")
+            (Path(d) / ".env").write_text("LOAD_TIMEOUT=7\nSAVE_REL=Saves/x.json\n")
             s = run.load_settings(Path(d), env={})
-        self.assertEqual(s.load_timeout_s, 7)
+        self.assertEqual(s.load_timeout, 7)
         self.assertEqual(s.save_rel, "Saves/x.json")
 
     def test_process_environment_is_used_when_there_is_no_env_file(self):
         with tempfile.TemporaryDirectory() as d:
-            s = run.load_settings(Path(d), env={"LAUNCH_TIMEOUT_S": "9"})
-        self.assertEqual(s.launch_timeout_s, 9)
+            s = run.load_settings(Path(d), env={"LAUNCH_TIMEOUT": "9"})
+        self.assertEqual(s.launch_timeout, 9)
 
     def test_bottle_setting_moves_the_derived_paths(self):
         with tempfile.TemporaryDirectory() as d:

@@ -189,21 +189,22 @@ What the numbers mean:
 - The "8808 loads per ground combat load" in the earlier sections is the whole session up to the playable point: 2609 loads at main menu startup plus 6199 for the load itself. 5497 of those 6199 finish before `Handling Setup` (the pre-setup gap) and 702 after it. A warm reload makes the same 6199.
 - Each record is a single asset read from an already resident bundle (`AssetBundle.LoadAssetAsync(relativePath)`), not a bundle file, so there is no per-load file size. The bundle name is recorded and the asset type stands in for the task type.
 - The engine's `LoadTask` has a `parent` argument that no caller sets, so the requester of a load cannot be recovered from the engine. The path (`<kind>/<scope>/...`, scope being `strategy`, `groundcombat` or `common`) is the classification used instead.
-- Estimated seconds divide the window's active span (first request to last completion, 19.9 s before setup in the cold load) by each class's share of loads. The summed load time column adds the start-to-done latency of every load and is far larger because about 100 loads are in flight at once; use it for relative cost, not wall time.
+- Estimated seconds divide the window's active span (first request to last completion, 19.9 s before setup in the cold load) by each class's share of loads, so they assume every load costs the same wall time. The summed load time column adds the start-to-done latency of every load and is far larger because about 100 loads are in flight at once; use it for relative cost, not wall time.
 
 Classes in the cold load, before setup (5497 loads, 19.9 s of activity):
 
 | Class | Loads | Est. seconds | Summed load time |
 |---|---|---|---|
-| Strategy scope (templates 892, textures 459, data 398, audio 60, prefabs 31, ui 24) | 1864 (34%) | 6.7 s | 2310 s |
-| Common scope | 1146 (21%) | 4.1 s | 819 s |
-| Ground combat scope | 2487 (45%) | 9.1 s | 803 s |
-| Released at load start and loaded again (all scopes) | 2574 (47%) | 19.8 s by share, 9.3 s by count | 2948 s (75% of the total) |
-| Strategy scope that is not a reload | 481 | 1.7 s | not split out |
+| Strategy scope (templates 892, textures 459, data 398, audio 60, prefabs 31, ui 24) | 1864 (34%) | 6.7 s | 2310 s (59%) |
+| Common scope | 1109 (20%) | 4.0 s | 820 s (21%) |
+| Ground combat scope | 2524 (46%) | 9.1 s | 803 s (20%) |
+| Released at load start and loaded again (all scopes) | 2574 (47%) | 9.3 s | 2948 s (75%) |
+| of which strategy scope | 1383 (25%) | 5.0 s | 2165 s (55%) |
+| Strategy scope that is not a reload | 481 (9%) | 1.7 s | 145 s (4%) |
 | Loaded more than once inside the same window | 0 | 0 | 0 |
 | Loaded, then released again inside the same window | 0 | 0 | 0 |
 
-(The 19.8 s in the reloaded row is the estimate the script prints for the filtered set, which re-spreads those loads over their own span. By count they are 47% of the 19.9 s, about 9.3 s.)
+The scope rows add up to 5497 loads. The reload row overlaps them.
 
 Findings:
 
@@ -213,6 +214,6 @@ Findings:
 
 What a mod could do, and the evidence:
 
-- **Skip the unload of assets the target load will request again (candidate for TASK-010.07).** Evidence it is safe: the same descriptors are loaded again moments after the unload, so the resulting resident assets are the same content; the capture shows no path loaded twice in a window, so there is no case where the second copy differs. Evidence still missing: whether any loaded asset keeps mutable state or post-load processing results that the unload/reload resets (templates are the largest class, 1097 + 892 + 645). The 010.07 experiment has to show an identical error count (5 per load), identical state-loss counts and an identical post-load save before it ships. Upper bound if the whole set were skipped: 2574 of 5497 pre-setup loads, a larger share of the summed load time (75%) than the share of wall time because those loads are the slow ones.
+- **Skip the unload of assets the target load will request again (candidate for TASK-010.07).** Evidence it is safe: the same descriptors are loaded again moments after the unload, so the resulting resident assets are the same content; the capture shows no path loaded twice in a window, so there is no case where the second copy differs. Evidence still missing: whether any loaded asset keeps mutable state or post-load processing results that the unload/reload resets (templates are the largest class, 1097 + 892 + 645). The 010.07 experiment has to show an identical error count (5 per load), identical state-loss counts and an identical post-load save before it ships. Upper bound if the whole set were skipped: 2574 of 5497 pre-setup loads, about 9.3 s of the 19.9 s by count. Their 75% share of summed load time suggests the saving could be larger than the count share, because they are the slow classes, but that is not a wall-time measurement.
 - **Defer or skip the 481 strategy-scope first loads.** Not supported by the evidence yet. They are requested by the load screen manifest and the capture cannot show whether ground combat ever reads them. Skipping them without a usage trace risks a missing-asset error at the first access, so this needs a read-tracking experiment first.
 - **Nothing to remove as duplicate or load-then-release work** inside a single load: both counts are zero.

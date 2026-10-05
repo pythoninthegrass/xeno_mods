@@ -1,11 +1,11 @@
 ---
 id: TASK-003
 title: Add UpdateTasks instrumentation patch
-status: In Progress
+status: Done
 assignee:
   - claude
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 04:25'
+updated_date: '2026-10-05 04:31'
 labels: []
 dependencies:
   - TASK-001
@@ -24,7 +24,7 @@ Step 2 of docs/PLAN.md. Harmony prefix/postfix on Common.Content.Managers.Conten
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Aggregation unit tests written first and failing, then passing
-- [ ] #2 Patch logs one WARN line per second during a load
+- [x] #2 Patch logs one WARN line per second during a load
 - [x] #3 No allocations in the per-frame path
 <!-- AC:END -->
 
@@ -61,4 +61,14 @@ Glue in update_tasks_patch.cs patches private ContentManager.UpdateTasks; fields
 AC3: aggregator is allocation-checked by unit test; glue allocates only the log string once per second (reviewed, not measured in game).
 
 AC2 open: needs an in-game save load to see one WARN line per second in $DATA/Logs/output.log. Lifecycle file renamed to snake_case per Lance.
+
+AC2 verified in game: one WARN line per second in output.log. First run logged a duplicate frames=1 line after each real line because the game already calls Harmony.PatchAll on mod assemblies (ContentPackState.cs:553) and the explicit CreateClassProcessor(...).Patch() applied the patch twice. Removed the explicit call; duplicates gone on reload.
+
+Observed in the first load: a window with frames=2 updateMs=5142.5 processing=497 pending=136, i.e. a multi-second stall inside UpdateTasks. Left for TASK-004/005.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added a Harmony prefix/postfix on ContentManager.UpdateTasks that logs one WARN line per second with frames, ms inside UpdateTasks, processing/pending task counts, tasks completed (processing-count drop) and wall ms per frame. Aggregation lives in update_tasks_stats.cs (pure, xunit-tested test-first, 11 tests incl. a zero-allocation check); glue is update_tasks_patch.cs. The game's own PatchAll applies the patch, so the lifecycle does not patch explicitly. Verified in game.
+<!-- SECTION:FINAL_SUMMARY:END -->

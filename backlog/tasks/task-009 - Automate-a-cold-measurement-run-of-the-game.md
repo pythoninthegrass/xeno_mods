@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-05 06:05'
-updated_date: '2026-10-05 06:25'
+updated_date: '2026-10-05 06:30'
 labels:
   - tooling
   - automation
@@ -31,7 +31,7 @@ Context for a fresh agent:
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 One command performs a full cold run for a given run name: ensures the game is closed, archives output.log* into $DATA/Logs/<run-name>, launches the game, loads the baseline save, waits until the game is playable, and quits the game
-- [ ] #2 Spike outcome (mod-side auto-load vs osascript menu navigation) is recorded in the task notes with the reason for the choice
+- [x] #2 Spike outcome (mod-side auto-load vs osascript menu navigation) is recorded in the task notes with the reason for the choice
 - [ ] #3 The run verifies the loaded save from the Queued LoadGameCommand log line and exits non-zero with a clear message if the wrong save loaded or playable is not reached within a timeout
 - [ ] #4 On failure or timeout the game process is terminated and no game config file (optimizing.json, unity_experiment.txt, log4net.xml) is left modified by the automation
 - [ ] #5 Two consecutive unattended automated runs complete and their pre-setup gap falls within the 19.8 to 21.2 s range of runs 3 to 5
@@ -51,6 +51,10 @@ APPROVED by Lance (2026-10-05): Python plus scripts/ layout, following ~/git/swo
 5. Validate (AC #5): first run with Lance watching, then two consecutive unattended runs, gaps within 19.8 to 21.2 s. Ask Lance before each desktop-takeover run.
 6. Docs (AC #7): docs/automated-runs.md with usage, Accessibility and Screen Recording permissions, desktop takeover warning.
 7. Commits: conventional, no attribution trailers (per Lance's CLAUDE.md, overriding the harness Co-Authored-By instruction); backlog and .serena changes in separate atomic commits.
+
+REVISION (Lance, 2026-10-05, after spikes): (a) mod-side auto-load is the primary load route; (b) osascript/JXA menu navigation is kept as the fallback for the TASK-007 mod-off arm (select with a CLI flag). The orchestrator script is scripts/run.py (renamed from cold_run.py). Configuration uses python-decouple following ~/git/hello_pep_723/hello: if Path.cwd()/.env exists use Config(RepositoryEnv(env_file)), otherwise the default decouple config; every setting has a default so no .env is required. Script header follows the swords_of_glass pattern (shebang `uv run --script`, requires-python >=3.13,<3.14, dependencies = ["python-decouple>=3.8"]).
+
+OPEN QUESTIONS (asked Lance 2026-10-05): (1) AC #5 compares the pre-setup gap with 19.8 to 21.2 s, but that range is LoseFocus to Setup and the LoadingWorld LoseFocus line does not exist under (a), because the load is queued while the boot loading screen outro is still running. Proposed replacement anchor: the last 'XenonautsLoadScreen: Intro Complete' before 'Handling Setup for GroundCombat', which is 22.55 to 22.80 s in baseline runs 1 to 5 (22.65 to 22.69 in runs 3 to 5) and 22.63 s under (a). Needs approval before AC #5 is edited. (2) The '20 state-loss matches' baseline is not defined anywhere in the repo; need the pattern before it can be counted. (3) AC #1 says archive output.log* into <run-name>; planned behaviour: leftover logs from before the run go to Logs/archive-<timestamp>, and the run's own logs are moved into Logs/<run-name> after the game quits.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -65,4 +69,6 @@ LOAD SPIKE (a) mod-side auto-load: not prototyped yet. Argument against: TASK-00
 LOAD SPIKE (a) mod-side auto-load (2026-10-05): WORKS, no input takeover. Implementation in x2_load_profiler: auto_load_settings.cs (parser for Mods/x2_load_profiler/auto_load.txt, keys save=<path> and reseed=<bool, default true>, 8 xunit tests written first and seen failing), auto_load_patch.cs (Harmony postfix on MainMenuElement.OnEnter records the pending load once per process; a postfix on ContentManager.UpdateTasks queues `new LoadGameCommand(new FileDescriptor(path, typeof(SaveGame)), reseed)` on the MainMenuWorld once XenonautsMain.Instance.ScreenManager.IsTransitioning is false). First attempt queued the command directly inside OnEnter and the game rejected it ('Rejected the request to move to GroundCombat: a screen transition is already underway'; log archived as Logs/spike-a-attempt1-too-early), so the deferral is required. Second attempt: queued 01:24:19.495 (117 ms after menu enter), Handling Setup for GroundCombat +23.2 s, BlockOnLocalPlayerTurn +43.6 s, 5 [ERROR] lines, same as baseline and the menu-click run (+44.7 s). Logs: $DATA/Logs/spike-a-autoload. Descriptor logs as 'FD[UNRESOLVED]>FileSystem::<path>' (menu click logs 'FileSystem::<path>'), so the save-verification regex must accept both and match on the path. The auto_load.txt file was removed after the spike; the built DLL with the (inert without the file) patch is installed in the mod folder.
 
 COMPARISON: (a) is deterministic, needs no desktop takeover, no screen coordinates, no permissions, and the load fires 117 ms after the menu is ready instead of after click latency. (b) works but depends on window position, display layout, list ordering (first Turn 10 row) and Accessibility plus Screen Recording grants, and it takes over the desktop. Cost of (a): it runs inside the profiler mod, so the TASK-007 mod-off arm cannot use it; mod-off runs would need (b) or a separate minimal always-on auto-load mod (which is itself a variable). Lance's stated preference: direct mod access ideally, osascript/JXA is brittle and acceptable only as an interim workaround.
+
+ANCHOR FINDING (2026-10-05): a throwaway script reproduces the earlier gaps exactly from the archived logs, so the parsing is sound. LoseFocus to Setup: run1 21.35, run2 21.30, run3 21.19, run4 20.17, run5 19.82, spike-b-menu 19.99, spike-a-autoload n/a (no LoseFocus line). Queue to setup: 22.79, 23.06, 22.91, 22.94, 22.89, 23.37 (b), 23.22 (a). Last LoadScreen Intro Complete to setup: 22.55, 22.80, 22.68, 22.69, 22.65, 23.11 (b), 22.63 (a). Queue to playable: 42.04, 42.92, 42.98, 42.91, 43.40, 44.75 (b), 43.61 (a). Under (a) the command is queued at the instant the boot loading screen's Outro Begin fires (the IsTransitioning gate was already false), the game logs 'MoveTo GroundCombat Skip: The previous MoveTo is still animating' once and then proceeds normally.
 <!-- SECTION:NOTES:END -->

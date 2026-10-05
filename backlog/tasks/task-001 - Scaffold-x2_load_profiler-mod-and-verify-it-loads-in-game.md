@@ -1,10 +1,10 @@
 ---
 id: TASK-001
 title: Scaffold x2_load_profiler mod and verify it loads in game
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 04:11'
+updated_date: '2026-10-05 04:18'
 labels: []
 dependencies: []
 references:
@@ -23,6 +23,6 @@ Step 1 of docs/PLAN.md. Mod project under src/x2_load_profiler builds with dotne
 <!-- AC:BEGIN -->
 - [x] #1 Project builds with dotnet build -c Release on macOS
 - [x] #2 Build installs DLL, PDB and manifest.json into Mods/x2_load_profiler
-- [ ] #3 Mod enabled via the in-game mod menu
-- [ ] #4 [X2LoadProfiler] Loaded appears in output.log
+- [x] #3 Mod enabled via the in-game mod menu
+- [x] #4 [X2LoadProfiler] Loaded appears in output.log
 <!-- AC:END -->

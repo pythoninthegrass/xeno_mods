@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Include="../../src/x2_load_profiler/update_tasks_stats.cs" Link="update_tasks_stats.cs" />
     <Compile Include="../../src/x2_load_profiler/bundle_load_stats.cs" Link="bundle_load_stats.cs" />
+    <Compile Include="../../src/x2_load_profiler/unity_experiment_settings.cs" Link="unity_experiment_settings.cs" />
   </ItemGroup>
 
   <ItemGroup>

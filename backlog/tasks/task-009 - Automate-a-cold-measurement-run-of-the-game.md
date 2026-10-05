@@ -1,11 +1,11 @@
 ---
 id: TASK-009
 title: Automate a cold measurement run of the game
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-05 06:05'
-updated_date: '2026-10-05 06:48'
+updated_date: '2026-10-05 06:51'
 labels:
   - tooling
   - automation
@@ -36,7 +36,7 @@ Context for a fresh agent:
 - [x] #4 On failure or timeout the game process is terminated and no game config file (optimizing.json, unity_experiment.txt, log4net.xml) is left modified by the automation
 - [x] #5 Testable logic (log parsing, auto-load config parsing) has unit tests written before the implementation
 - [x] #6 Usage is documented in docs: how to run, required macOS Accessibility and Screen Recording permissions, and that the run takes over the desktop
-- [ ] #7 Two automated runs in a row complete (Lance accepted run6 watched plus run7 unattended) and their gap from the last XenonautsLoadScreen Intro Complete to Handling Setup for GroundCombat is within the baseline 22.55 to 22.80 s (replaces the LoseFocus 19.8 to 21.2 s range, which does not exist under auto-load)
+- [x] #7 Two automated runs in a row complete (Lance accepted run6 watched plus run7 unattended) and their gap from the last XenonautsLoadScreen Intro Complete to Handling Setup for GroundCombat is within the baseline 22.55 to 22.80 s (replaces the LoseFocus 19.8 to 21.2 s range, which does not exist under auto-load)
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -81,4 +81,12 @@ HANDOFF 2/3 API THAT test_run.py REQUIRES from scripts/run.py: Entry(ts, message
 HANDOFF 3/3 PLANNED FLOW for `scripts/run.py <run-name> [--load auto|menu]` (auto default): validate name and refuse an existing Logs/<run-name>; preflight CrossOver Steam is running (a process with steam.exe in its command line) and fail fast on syncfailed in Steam's logs/console_log.txt; ensure the game is closed (SIGTERM, wait, SIGKILL); move leftover $DATA/Logs/output.log* to Logs/archive-<timestamp>; hash optimizing.json ($GAME_DIR), $DATA/Mods/x2_load_profiler/unity_experiment.txt and $GAME_DIR/Assets/Configuration/log4net.xml; auto mode writes $DATA/Mods/x2_load_profiler/auto_load.txt with auto_load_text(abs save path); `open <LAUNCHER_APP>`; wait for the Xenonauts2.exe process; menu mode waits for 'Outro Complete' of the boot load screen then posts the three JXA clicks (LOAD GAME, save row, LOAD SAVE; run via `osascript -l JavaScript` with ObjC.import('CoreGraphics'), CGEventCreateMouseEvent and CGEventPost at kCGHIDEventTap: move, 0.3 s delay, down, 0.08 s delay, up); poll output.log for the queued line and fail on a wrong save (AC #3); poll for the playable marker 'GCUI: BlockOnLocalPlayerTurn' with LOAD_TIMEOUT_S; SIGTERM the game; move the run's output.log* into Logs/<run-name>; print timings and error count; the finally block always kills the game, removes auto_load.txt and compares hashes (AC #4), exit code 1 with a clear message on any failure. IMPORTANT: match processes with a pattern that cannot match the pgrep/pkill command line itself, for example `[X]enonauts2.exe`; a plain `pgrep -f Xenonauts2.exe` also matches the calling shell. Then validate (plan step 5), write docs/automated-runs.md (step 6, AC #7) and commit conventionally with no attribution trailers, backlog changes in their own commits.
 
 RESULTS (2026-10-05): scripts/run.py implemented (ec88744 and follow-ups, 39 tests pass) and docs/automated-runs.md written (42ab10f). Decisions from Lance: AC #5 anchor replaced by last Intro Complete to Setup; state-loss pattern is the case-insensitive string 'state-loss' (20 in every baseline run, from the FSM state-loss ERROR record and its wrapped ExceptionReport copy); leftover logs go to Logs/<prefix><run-name> with LEFTOVER_ARCHIVE_PREFIX default 'pre-' (no timestamp), the run's logs to Logs/<run-name>; all settings go through decouple (process env, then .env, then default) and env keys no longer carry a _S suffix (LAUNCH_TIMEOUT, LOAD_TIMEOUT, QUIT_GRACE, POLL_INTERVAL). Preflight fix: the Steam cloud sync check ignores a syncfailed line followed by a completed launch (cloud_sync_blocked). That fix and its test were written together, not red first. RUNS (auto load): run6-auto (Lance watching) exit 0: 5 ERROR, 20 state-loss, queue to setup 22.99 s, queue to playable 43.61 s, intro to setup 22.40 s. run7-auto exit 0: 5 ERROR, 20 state-loss, queue to setup 23.41 s, queue to playable 45.23 s, intro to setup 22.82 s. Both ends miss the baseline 22.55 to 22.80 s by 0.15 s and 0.02 s; AC #5 left unchecked pending Lance's call on that tolerance. Only auto mode was run; menu mode (--load menu) is implemented but untested end to end through run.py. The failure paths (wrong save, timeout) are covered by unit tests of the helpers, not exercised against the live game.
+
+FINAL (2026-10-05, supersedes the AC #5 remark in RESULTS): Lance accepted run6-auto (watched) plus run7-auto (unattended) for the final AC (now #7) despite intro to setup of 22.40 s and 22.82 s against 22.55 to 22.80 s, and confirmed the mod works as expected. The task is Done. Menu mode (--load menu) stays unexercised through run.py; Lance's call is to leave that until the TASK-007 mod-off arm needs it, so the first mod-off run is its test (it takes over the desktop, so Lance should be present). Env keys in HANDOFF 2/3 and 3/3 predate the rename: they are now LAUNCH_TIMEOUT and LOAD_TIMEOUT, and leftover logs go to Logs/pre-<run-name>, not Logs/archive-<timestamp>.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+scripts/run.py performs a full cold run (close game, archive logs, launch via CrossOver Steam, load the baseline save, wait for playable, quit, archive run logs) with save verification from the Queued LoadGameCommand line, timeout handling, and config file hash checks. Auto-load through the x2_load_profiler mod is the default; --load menu (JXA clicks) is the fallback for the TASK-007 mod-off arm and has not yet been run through run.py. Settings go through python-decouple (process env, .env, default); usage is in docs/automated-runs.md. 39 unit tests in scripts/tests/test_run.py. run6-auto (watched) and run7-auto (unattended) both exited 0 with 5 ERROR lines, 20 state-loss matches, intro-to-setup 22.40 s and 22.82 s against the 22.55 to 22.80 s baseline; Lance accepted this for the final AC.
+<!-- SECTION:FINAL_SUMMARY:END -->

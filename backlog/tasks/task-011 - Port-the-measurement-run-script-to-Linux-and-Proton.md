@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - pythoninthegrass
 created_date: '2026-10-05 17:55'
-updated_date: '2026-10-05 17:56'
+updated_date: '2026-10-05 18:03'
 labels: []
 dependencies: []
 references:
@@ -35,14 +35,14 @@ The outcome is one script that performs the same run on either platform, picking
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 `scripts/run.py` performs a cold run on Linux with the game under Proton, and the unchanged macOS path still performs a cold run under CrossOver
-- [ ] #2 The launch step and the click step are configurable settings rather than hardcoded macOS commands, and each has a working built-in default for both macOS and Linux
-- [ ] #3 The Wine user name used in the save and data paths is a setting, defaulting to the right value on each platform
-- [ ] #4 The Steam console log location is a setting, defaulting to the right location on each platform, and the cloud-sync preflight check works on Linux
-- [ ] #5 The Steam process check in preflight recognises a running native Linux Steam
+- [x] #2 The launch step and the click step are configurable settings rather than hardcoded macOS commands, and each has a working built-in default for both macOS and Linux
+- [x] #3 The Wine user name used in the save and data paths is a setting, defaulting to the right value on each platform
+- [x] #4 The Steam console log location is a setting, defaulting to the right location on each platform, and the cloud-sync preflight check works on Linux
+- [x] #5 The Steam process check in preflight recognises a running native Linux Steam
 - [ ] #6 Menu-mode and warm-load click coordinates are recalibrated for the 1920x1080 Linux display and documented as display-dependent
-- [ ] #7 `scripts/tests/test_run.py` covers the new settings and both platforms' defaults, and the whole suite passes on Linux
-- [ ] #8 `docs/automated-runs.md` has a Linux section covering preconditions, how the script is invoked against the container, and what differs from macOS
-- [ ] #9 `.env.example` documents every new key
+- [x] #7 `scripts/tests/test_run.py` covers the new settings and both platforms' defaults, and the whole suite passes on Linux
+- [x] #8 `docs/automated-runs.md` has a Linux section covering preconditions, how the script is invoked against the container, and what differs from macOS
+- [x] #9 `.env.example` documents every new key
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -94,3 +94,15 @@ Tests must pin both platforms' defaults without depending on the host platform, 
 - Steps 1-6 are testable hermetically. Step 7 needs the game installed and running, which is still blocked on the Steam login and the 538030 install. The port can land with coordinates marked unverified and step 7 closed separately if the game is not up in time.
 - `uv` may not be present in the container; the script's shebang needs it. Verify before the first real run and record the fix in the docs.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Steps 1-6 and 8 of the plan are done and committed as ccbc926 (code, tests, docs, .env.example); the backlog edits went in separately as 03959cd. 65 tests pass on Linux, ruff format and check are clean.
+
+What landed: PLATFORM_DEFAULTS keyed by platform, `load_settings(..., platform=sys.platform)`, and the new settings WINE_USER, STEAM_CONSOLE_LOG, LAUNCH_CMD and CLICK_CMD. `substitute()` does literal token replacement rather than str.format, because the JXA clicker's JavaScript braces would otherwise break formatting. `{bottle}` expands in any configured path, not just in the built-in default. `launcher_app` is now `Path | None` and `launcher_app_problem()` makes preflight's launcher check testable without a subprocess.
+
+Verified by hand that both platform tables resolve end to end (launch argv, click argv, console log, game dir, save path) by loading settings with platform forced to each value.
+
+Still open: AC #1 (a real cold run on Linux), AC #6 (the six click points at 1920x1080) and AC #7's "whole suite passes" is true but the suite cannot cover a real run. All three are blocked on Steam login and the app 538030 install, which are the user's to do.
+<!-- SECTION:NOTES:END -->

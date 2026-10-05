@@ -43,8 +43,10 @@ On macOS, menu mode needs these permissions granted to the terminal that runs th
 
 On Linux the game runs under Proton rather than CrossOver, and the script runs **inside** the steam-headless container, not on the host. Everything it touches lives there: the game process, the Proton prefix, `Logs/output.log`, the mod folder and the X display.
 
+The repo has to be reachable inside the container, and `uv` has to be on the PATH. The steam-headless image puts `~/.local/bin` on the login PATH, so a login shell finds a `uv` installed there; a plain `docker exec` does not, hence `bash -lc`:
+
 ```bash
-docker exec -u default -e DISPLAY=:55 steamos scripts/run.py run1-auto
+docker exec -u default -e DISPLAY=:55 steamos bash -lc 'cd /path/to/xeno_mods && scripts/run.py run1-auto'
 ```
 
 What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAULTS`:
@@ -68,7 +70,8 @@ Linux preconditions:
 - Native Steam is running and logged in, with Xenonauts 2 installed and forced to a Proton version.
 - Steam Cloud sync is disabled for Xenonauts 2, as on macOS.
 - `xdotool` is installed in the container (it ships with the steam-headless image).
-- `uv` is available in the container, for the script's shebang.
+- `uv` is installed in the container, for the script's shebang. `/home/default` is a host bind mount, so an install under `~/.local/bin` survives a recreate.
+- The repo is mounted into the container, or otherwise present under `/home/default`.
 
 The click coordinates still default to the 2560x1440 macOS values. The container's display is 1920x1080, so menu mode and `--warm-loads` need all six points set in `.env` before they will work there.
 

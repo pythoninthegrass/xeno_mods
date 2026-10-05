@@ -4,7 +4,7 @@ title: Measure Mono JIT and first-call cost during the load
 status: To Do
 assignee: []
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-05 15:30'
+updated_date: '2026-10-05 17:55'
 labels:
   - load-time
 dependencies:
@@ -27,3 +27,12 @@ Read parent TASK-010 first. The game runs on Mono (JIT) under Rosetta translatio
 - [ ] #3 Any menu-time cost or instability from pre-compilation is measured and reported
 - [ ] #4 Errors and state-loss counts match the baseline in every measured run
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-05 17:55
+---
+The description's premise that the game runs "under Rosetta translation" no longer applies: measurement has moved to a Linux x86-64 host running the game under Proton, so there is no x86-to-ARM translation layer and Mono JIT runs natively. JIT cost is still worth measuring, but the expected magnitude is lower and any macOS/Rosetta numbers must not be carried over. Re-establish the cold-versus-warm gap on Linux first (TASK-010.01) before judging whether JIT is a meaningful share of it.
+---
+<!-- COMMENTS:END -->

@@ -4,9 +4,11 @@ title: Re-baseline load times at the shipping log4net configuration
 status: To Do
 assignee: []
 created_date: '2026-10-05 15:30'
+updated_date: '2026-10-05 17:55'
 labels:
   - load-time
-dependencies: []
+dependencies:
+  - TASK-011
 parent_task_id: TASK-010
 priority: high
 ordinal: 11000
@@ -25,3 +27,12 @@ Read parent TASK-010 first for context and the measurement protocol. All numbers
 - [ ] #3 docs/load-time-report.md gains a table comparing DEBUG and shipping-level numbers and states whether the TASK-006 gain still holds
 - [ ] #4 log4net.xml is restored to its original state after the measurements
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-05 17:55
+---
+Measurement has moved from macOS/CrossOver to a Linux host running the game under Proton (AlmaLinux, steam-headless container, AMD 780M iGPU, 1920x1080 over noVNC). The existing numbers in docs/load-time-report.md were taken on macOS under CrossOver with Rosetta translation and are not comparable to anything measured on Linux. This re-baseline is therefore a Linux re-baseline: treat the macOS numbers as a separate, historical arm and label both arms by platform in the report. TASK-011 ports scripts/run.py to Linux and must land before this task can run.
+---
+<!-- COMMENTS:END -->

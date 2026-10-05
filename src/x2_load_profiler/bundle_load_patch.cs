@@ -21,7 +21,6 @@ namespace X2LoadProfiler {
         public static int InFlight => (int)FilesLoading.GetValue(null);
     }
 
-    [HarmonyPatch(typeof(AssetBundleFileLoadOperation), nameof(AssetBundleFileLoadOperation.CanStart))]
     public static class BundleCanStartPatch {
 
         [HarmonyPostfix]
@@ -32,7 +31,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(AssetBundleFileLoadOperation), nameof(AssetBundleFileLoadOperation.Start))]
     public static class BundleStartPatch {
 
         [HarmonyPostfix]
@@ -42,7 +40,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(AssetBundleFileLoadOperation), nameof(AssetBundleFileLoadOperation.Update))]
     public static class BundleUpdatePatch {
 
         private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);

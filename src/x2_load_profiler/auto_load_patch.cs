@@ -58,7 +58,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(MainMenuElement), nameof(MainMenuElement.OnEnter))]
     public static class AutoLoadEnterPatch {
 
         [HarmonyPostfix]
@@ -67,7 +66,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(ContentManager), "UpdateTasks")]
     public static class AutoLoadTickPatch {
 
         [HarmonyPostfix]

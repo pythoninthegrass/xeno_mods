@@ -53,7 +53,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(LoadTask), MethodType.Constructor, new[] { typeof(ILoader), typeof(ContentManager), typeof(Descriptor), typeof(IAssetParameters), typeof(Descriptor), typeof(bool), typeof(bool) })]
     public static class CaptureLoadTaskPatch {
 
         [HarmonyPostfix]
@@ -64,7 +63,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(AssetBundleFileLoadOperation), MethodType.Constructor, new[] { typeof(IContentManager), typeof(UnityEngine.AssetBundle), typeof(Descriptor) })]
     public static class CaptureRequestPatch {
 
         [HarmonyPostfix]
@@ -75,7 +73,6 @@ namespace X2LoadProfiler {
         }
     }
 
-    [HarmonyPatch(typeof(ContentManager), "InternalUnload")]
     public static class CaptureUnloadPatch {
 
         [HarmonyPrefix]

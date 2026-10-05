@@ -8,7 +8,6 @@ using log4net;
 
 namespace X2LoadProfiler {
 
-    [HarmonyPatch(typeof(ContentManager), "UpdateTasks")]
     public static class UpdateTasksPatch {
 
         private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);

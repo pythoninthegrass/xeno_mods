@@ -27,13 +27,15 @@ namespace X2LoadProfiler {
 
         private const string BundleCapFileName = "bundle_cap.txt";
 
+        private const string ProfilerFileName = "profiler.txt";
+
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
             AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
             ApplyBundleCap(mod);
-            string captureFlag = Path.Combine(mod.ContentPack, BundleCaptureFlagFileName);
-            if (File.Exists(captureFlag)) {
-                BundleCapture.Enable(Path.Combine(mod.ContentPack, BundleCaptureOutputFileName));
+            ApplyProfiler(mod, patcher);
+            if (File.Exists(AutoLoad.ConfigPath)) {
+                InstrumentationPatches.ApplyAutoLoad(patcher);
             }
             try {
                 ApplyExperiment(mod);
@@ -48,6 +50,19 @@ namespace X2LoadProfiler {
             string? text = File.Exists(path) ? File.ReadAllText(path) : null;
             BundleConcurrencyConfig.ModCap = BundleConcurrency.ParseCap(text, BundleConcurrency.DefaultCap);
             Log.Warn($"[X2LoadProfiler] BundleCap={BundleConcurrencyConfig.ModCap} source={(text == null ? "default" : path)}");
+        }
+
+        private static void ApplyProfiler(Mod mod, Harmony patcher) {
+            string path = Path.Combine(mod.ContentPack, ProfilerFileName);
+            ProfilerSwitch.Enabled = ProfilerSwitch.Parse(File.Exists(path) ? File.ReadAllText(path) : null);
+            Log.Warn($"[X2LoadProfiler] Profiler={ProfilerSwitch.Enabled} source={(File.Exists(path) ? path : "default")}");
+            if (!ProfilerSwitch.Enabled) {
+                return;
+            }
+            InstrumentationPatches.ApplyProfiler(patcher);
+            if (File.Exists(Path.Combine(mod.ContentPack, BundleCaptureFlagFileName))) {
+                BundleCapture.Enable(Path.Combine(mod.ContentPack, BundleCaptureOutputFileName));
+            }
         }
 
         private static void ApplyExperiment(Mod mod) {

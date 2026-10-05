@@ -66,4 +66,19 @@ public class BundleLoadStatsTests {
         s.RecordDone(5_000_000);
         Assert.Equal(500.0, s.TakeSnapshot(0).MeanLatencyMs);
     }
+
+    [Fact]
+    public void IsSlow_is_true_at_or_above_the_threshold() {
+        var s = NewStats();
+        Assert.False(s.IsSlow(499));
+        Assert.True(s.IsSlow(500));
+        Assert.True(s.IsSlow(1500));
+    }
+
+    [Fact]
+    public void IsSlow_converts_with_ticks_per_second() {
+        var s = new BundleLoadStats(10_000_000);
+        Assert.False(s.IsSlow(4_999_999));
+        Assert.True(s.IsSlow(5_000_000));
+    }
 }

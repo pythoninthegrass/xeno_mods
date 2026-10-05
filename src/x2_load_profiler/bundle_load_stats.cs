@@ -22,6 +22,8 @@ namespace X2LoadProfiler {
     // Per-window counters for asset bundle load operations; every method is allocation-free
     public sealed class BundleLoadStats {
 
+        public const double SlowThresholdMs = 500.0;
+
         private readonly long _ticksPerSecond;
         private int _started;
         private int _completed;
@@ -48,6 +50,10 @@ namespace X2LoadProfiler {
             if (latencyTicks > _latencyTicksMax) {
                 _latencyTicksMax = latencyTicks;
             }
+        }
+
+        public bool IsSlow(long latencyTicks) {
+            return latencyTicks * 1000.0 / _ticksPerSecond >= SlowThresholdMs;
         }
 
         // Returns the current window and clears the counters

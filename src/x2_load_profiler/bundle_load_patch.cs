@@ -2,7 +2,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using Common.Content.AsyncOperations;
+using Artitas.Utils;
+using Common.Content;
 using HarmonyLib;
+using log4net;
 
 namespace X2LoadProfiler {
 
@@ -42,10 +45,18 @@ namespace X2LoadProfiler {
     [HarmonyPatch(typeof(AssetBundleFileLoadOperation), nameof(AssetBundleFileLoadOperation.Update))]
     public static class BundleUpdatePatch {
 
+        private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);
+
         [HarmonyPostfix]
-        public static void Postfix(AssetBundleFileLoadOperation __instance, bool __result) {
-            if (__result && BundleLoadTracker.StartTimes.Remove(__instance, out long startTicks)) {
-                BundleLoadTracker.Stats.RecordDone(Stopwatch.GetTimestamp() - startTicks);
+        public static void Postfix(AssetBundleFileLoadOperation __instance, bool __result, Descriptor ____descriptor) {
+            if (!__result || !BundleLoadTracker.StartTimes.Remove(__instance, out long startTicks)) {
+                return;
+            }
+
+            long latencyTicks = Stopwatch.GetTimestamp() - startTicks;
+            BundleLoadTracker.Stats.RecordDone(latencyTicks);
+            if (BundleLoadTracker.Stats.IsSlow(latencyTicks)) {
+                Log.Warn($"[X2LoadProfiler] SlowBundle ms={latencyTicks * 1000.0 / Stopwatch.Frequency:F0} type={____descriptor.Type?.Name} asset={____descriptor}");
             }
         }
     }

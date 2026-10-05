@@ -134,6 +134,41 @@ class TimingsTests(unittest.TestCase):
         self.assertIsNone(t.queue_to_setup)
 
 
+class LoadTimingsTests(unittest.TestCase):
+    SECOND_SAVE = SAVE_ABS.replace("auto/auto_groundcombat_turn_10_start-62", "user_x-4")
+
+    def second_load(self) -> str:
+        return (
+            entry(
+                "2026-10-05 01:30:00,000",
+                f"GroundCombatWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::{self.SECOND_SAVE})",
+            )
+            + entry("2026-10-05 01:30:01,000", "Xenonauts.XenonautsLoadScreen: Intro Complete")
+            + entry("2026-10-05 01:30:20,000", "LoadScreen, Handling Setup for GroundCombat")
+            + entry("2026-10-05 01:30:30,000", "GCUI: BlockOnLocalPlayerTurn for 1")
+        )
+
+    def test_one_timings_per_queued_load(self):
+        loads = run.find_load_timings(run.parse_entries(LOG + self.second_load()))
+        self.assertEqual(len(loads), 2)
+
+    def test_each_load_is_measured_against_its_own_anchors(self):
+        loads = run.find_load_timings(run.parse_entries(LOG + self.second_load()))
+        self.assertAlmostEqual(loads[0].queue_to_playable, 43.613, places=3)
+        self.assertAlmostEqual(loads[1].intro_to_setup, 19.0, places=3)
+        self.assertAlmostEqual(loads[1].queue_to_playable, 30.0, places=3)
+
+    def test_last_queued_save_is_the_newest_load(self):
+        entries = run.parse_entries(LOG + self.second_load())
+        self.assertEqual(run.last_queued_save_path(entries), self.SECOND_SAVE)
+
+    def test_last_queued_save_is_none_without_a_load(self):
+        self.assertIsNone(run.last_queued_save_path([]))
+
+    def test_no_loads_for_an_empty_log(self):
+        self.assertEqual(run.find_load_timings([]), [])
+
+
 class CountErrorsTests(unittest.TestCase):
     def test_counts_error_level_records(self):
         self.assertEqual(run.count_errors(LOG), 1)

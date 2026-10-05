@@ -105,6 +105,9 @@ class Settings:
     menu_load_game: tuple[int, int]
     menu_save_row: tuple[int, int]
     menu_load_save: tuple[int, int]
+    game_menu_button: tuple[int, int]
+    game_menu_load_game: tuple[int, int]
+    game_menu_save_row: tuple[int, int]
     mod_name: str
     leftover_archive_prefix: str
     state_loss_pattern: str
@@ -182,6 +185,13 @@ def queued_save_path(entries: list[Entry]) -> str | None:
     return None
 
 
+def last_queued_save_path(entries: list[Entry]) -> str | None:
+    for i in range(len(entries) - 1, -1, -1):
+        if QUEUED_MARKER in entries[i].message:
+            return queued_save_path(entries[i:])
+    return None
+
+
 def is_expected_save(path: str | None, save_rel: str) -> bool:
     return path is not None and path.replace("\\", "/").endswith(save_rel.replace("\\", "/"))
 
@@ -197,6 +207,13 @@ def find_timings(entries: list[Entry], playable_marker: str = DEFAULT_PLAYABLE_M
     intro = next((e.ts for e in reversed(before_setup) if INTRO_MARKER in e.message), None)
     lose_focus = next((e.ts for e in reversed(before_setup) if LOSE_FOCUS_MARKER in e.message), None)
     return Timings(queued, setup, playable, intro, lose_focus)
+
+
+def find_load_timings(entries: list[Entry], playable_marker: str = DEFAULT_PLAYABLE_MARKER) -> list[Timings]:
+    """One Timings per queued load, each bounded by the next queued load."""
+    starts = [i for i, e in enumerate(entries) if QUEUED_MARKER in e.message]
+    ends = starts[1:] + [len(entries)]
+    return [find_timings(entries[start:end], playable_marker) for start, end in zip(starts, ends, strict=False)]
 
 
 def count_errors(text: str) -> int:
@@ -285,6 +302,9 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         menu_load_game=parse_point(config("MENU_LOAD_GAME", default="1331,1302")),
         menu_save_row=parse_point(config("MENU_SAVE_ROW", default="947,426")),
         menu_load_save=parse_point(config("MENU_LOAD_SAVE", default="960,1112")),
+        game_menu_button=parse_point(config("GAME_MENU_BUTTON", default="54,54")),
+        game_menu_load_game=parse_point(config("GAME_MENU_LOAD_GAME", default="1280,760")),
+        game_menu_save_row=parse_point(config("GAME_MENU_SAVE_ROW", default="896,426")),
         mod_name=config("MOD_NAME", default=DEFAULT_MOD_NAME),
         leftover_archive_prefix=config("LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX),
         state_loss_pattern=config("STATE_LOSS_PATTERN", default=DEFAULT_STATE_LOSS_PATTERN),
@@ -385,7 +405,30 @@ def menu_load(s: Settings) -> None:
         time.sleep(1.5)
 
 
-def perform_run(s: Settings, run_name: str, load: str) -> Timings:
+def count_playable(s: Settings) -> int:
+    return sum(1 for e in parse_entries(read_log(s)) if s.playable_marker in e.message)
+
+
+def warm_load(s: Settings) -> None:
+    """Reload the baseline save through the in-game menu; the row is positional like the main menu one."""
+    before = count_playable(s)
+    time.sleep(2)
+    for point in (
+        s.game_menu_button,
+        s.game_menu_load_game,
+        s.game_menu_save_row,
+        s.menu_load_save,
+    ):
+        click(point)
+        time.sleep(1.5)
+    if not wait_until(lambda: count_playable(s) > before, s.load_timeout, s.poll_interval):
+        raise RunError(f"playable marker not reached within {s.load_timeout} s of the warm load")
+    queued = last_queued_save_path(parse_entries(read_log(s)))
+    if not is_expected_save(queued, s.save_rel):
+        raise RunError(f"wrong warm save loaded: expected {s.save_rel}, log shows {queued}")
+
+
+def perform_run(s: Settings, run_name: str, load: str, warm_loads: int = 0) -> list[Timings]:
     s.logs_dir.mkdir(parents=True, exist_ok=True)
     stop_game(s)
     archive_leftover_logs(s, run_name)
@@ -409,6 +452,8 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
         raise RunError(f"wrong save loaded: expected {s.save_rel}, log shows {queued}")
     if not wait_for_log(s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout):
         raise RunError(f"playable marker not reached within {s.load_timeout} s of the save being queued")
+    for _ in range(warm_loads):
+        warm_load(s)
     text = read_log(s)
     stop_game(s)
 
@@ -418,7 +463,8 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
         shutil.move(f, dest / f.name)
     print(f"logs archived to {dest}")
     print(f"errors: {count_errors(text)}, state-loss: {count_state_loss(text, s.state_loss_pattern)}")
-    return find_timings(parse_entries(text), s.playable_marker)
+    loads = find_load_timings(parse_entries(text), s.playable_marker)
+    return loads
 
 
 def format_seconds(value: float | None) -> str:
@@ -436,6 +482,12 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Run one cold measurement run of Xenonauts 2.")
     parser.add_argument("run_name")
     parser.add_argument("--load", choices=["auto", "menu"], default="auto")
+    parser.add_argument(
+        "--warm-loads",
+        type=int,
+        default=0,
+        help="reload the warm save N times in the same session after the first load",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -454,9 +506,9 @@ def main(argv: list[str]) -> int:
 
     before = hash_files(s.guarded_config_files)
     failure: str | None = None
-    timings: Timings | None = None
+    timings: list[Timings] | None = None
     try:
-        timings = perform_run(s, args.run_name, args.load)
+        timings = perform_run(s, args.run_name, args.load, args.warm_loads)
     except RunError as exc:
         failure = str(exc)
     except KeyboardInterrupt:
@@ -477,7 +529,9 @@ def main(argv: list[str]) -> int:
         print(f"error: {failure}", file=sys.stderr)
         return 1
     assert timings is not None
-    print_timings(timings)
+    for i, t in enumerate(timings):
+        print(f"load {i + 1} ({'cold' if i == 0 else 'warm'})")
+        print_timings(t)
     return 0
 
 

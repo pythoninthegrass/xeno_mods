@@ -7,6 +7,7 @@
 ```bash
 scripts/run.py run7-auto              # auto-load through the x2_load_profiler mod (default)
 scripts/run.py run7-menu --load menu  # click through the main menu instead
+scripts/run.py run7-warm --load menu --warm-loads 2  # then reload the same save twice in the same session
 ```
 
 The run name may contain letters, digits, `.`, `_` and `-`. The script refuses to start if `Logs/<run-name>` or `Logs/<prefix><run-name>` already exists. Exit code 0 means the save loaded and the game became playable; exit code 1 prints a clear message on stderr.
@@ -18,6 +19,10 @@ On success it prints the `[ERROR]` count, the state-loss count and four timings:
 `auto` (default) writes `Mods/x2_load_profiler/auto_load.txt`, and the mod queues the load 0.1 s after the main menu is ready. It needs no input, no screen coordinates and no macOS permissions. It cannot be used when the profiler mod is disabled, because the mod does the loading.
 
 `menu` waits for the main menu and posts three mouse clicks (LOAD GAME, the first Turn 10 save row, LOAD SAVE) with `osascript -l JavaScript`. Use it for the mod-off arm of the TASK-007 comparison. The save row is positional, so the run still verifies the save from the log.
+
+## Warm loads
+
+`--warm-loads N` repeats the load N times after the first one without restarting the game: it opens the in-game menu, LOAD GAME, picks the baseline save row and LOAD SAVE, then waits for the next playable marker and checks the queued path. The first load is cold and the rest are warm; the script prints timings for each. It needs the same macOS permissions as menu mode. A save made in-game with the profiler enabled triggers a "Missing Content" confirmation when loaded with the profiler disabled, so warm loads use the baseline save, which has no mod dependency. Both load lists are positional (`GAME_MENU_SAVE_ROW`, `MENU_SAVE_ROW`): an extra save above the baseline row shifts it by 55 px.
 
 ## Preconditions
 

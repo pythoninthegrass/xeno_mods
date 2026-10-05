@@ -55,3 +55,29 @@ The gap shrank by 2 to 3 s and the saves are not identical, so the difference is
 - A small Harmony mod that wraps `ContentManager.UpdateTasks` with a stopwatch and logs once per second: frames, total time in `UpdateTasks`, tasks polled, tasks completed, and time in the pending-dependency loop. That shows whether the gap is per-frame polling cost, frame rate, or per-task load cost, without the log volume of DEBUG logging. The official skeleton mod and `0Harmony.dll` support this.
 - Depending on that result, a Harmony prefix or transpiler on `UpdateTasks` to stop polling tasks that cannot start yet and to cache dependency checks for pending tasks.
 - Asking Goldhawk whether the async bypass of `frameLoadBudget` and the per-frame poll of non-startable tasks is intended.
+
+## Baseline with profiler (cap 25)
+
+Two cold runs on 2026-10-04 with `optimizing.json` restored to `{}`, the `x2_load_profiler` mod enabled, `log4net.xml` still at DEBUG with `AssetTask` at WARN, and `auto/auto_groundcombat_turn_10_start-62.json` (sha256 `ef7d2aeb7b8ed7d76bd403ea58536897daf7192dec2bf0af222e14aeb81ea388`). Each run is a fresh game launch, one load, no interaction with the window. Per-second profiler lines for the whole session are in `docs/baseline/run1-profiler.txt` and `docs/baseline/run2-profiler.txt`.
+
+| Event | Run 1 | Run 2 |
+|---|---|---|
+| Queued LoadGameCommand | 23:35:58.092 | 23:38:52.831 |
+| LoadingWorld LoseFocus | +1.44 s | +1.76 s |
+| Handling Setup for GroundCombat | +22.79 s | +23.06 s |
+| BlockOnLocalPlayerTurn promise | +42.05 s | +42.92 s |
+| Pre-setup gap (LoseFocus to Setup) | 21.35 s | 21.30 s |
+| Total, queue to playable | 42.05 s | 42.92 s |
+
+Profiler totals over the pre-setup gap (about 20 per-second lines each):
+
+| | Run 1 | Run 2 |
+|---|---|---|
+| Frames | 1145 | 1152 |
+| Time in `UpdateTasks` | 1347 ms | 1310 ms |
+| Share of gap wall time | 6.7% | 6.6% |
+| Tasks completed | 4070 | 4017 |
+| Worst second in `UpdateTasks` | 205 ms | 198 ms |
+| Worst wall time per frame | 32 ms | 34 ms |
+
+Both runs loaded the `auto/` autosave directly. The copy `Saves/ellz_1bf479e6/user_baseline_turn10-3.json` has the same hash and was not used. Raw logs were archived outside the repo under `Logs/run1-baseline` and `Logs/run2-baseline` in the game's user data folder.

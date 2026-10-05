@@ -1,10 +1,10 @@
 ---
 id: TASK-006
 title: Implement load-time fix as Harmony patch
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-05 04:10'
-updated_date: '2026-10-05 07:33'
+updated_date: '2026-10-05 14:38'
 labels: []
 dependencies:
   - TASK-005
@@ -22,7 +22,7 @@ Step 5 of docs/PLAN.md. Candidates in order: skip polling tasks that cannot star
 <!-- AC:BEGIN -->
 - [x] #1 Separable logic covered by tests written first
 - [x] #2 Same assets loaded and no new log errors
-- [ ] #3 Game reaches a playable state and a save made after the load still loads
+- [x] #3 Game reaches a playable state and a save made after the load still loads
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -35,4 +35,6 @@ Diagnosis (TASK-005) shows the gap is bound by per-bundle latency under the satu
 
 <!-- SECTION:NOTES:BEGIN -->
 Run 10 (fix on, default cap 200, auto-load): intro to setup 20.33 s, queue to playable 40.40 s, 8808 bundle loads (same as runs 8 and 9), 5 errors and 20 state-loss, error lines identical to run 8. AC #3 half open: game reaches playable (BlockOnLocalPlayerTurn marker), but a save made after the load and reloaded has not been tested, because that needs in-game input. Needs Lance or an osascript save-and-reload step.
+
+AC #3 closed 2026-10-05: with the fix on (default cap 200), the Save Game dialog was used in-game after the load to write user_task006_verify-4.json (2.2 MB, new name so no existing save was overwritten). Reloading it in the same session reached BlockOnLocalPlayerTurn in 33.3 s with the same squad and objectives and the same 5 errors and 20 state-loss lines as the first load. Details in docs/load-time-report.md, section Save made after the load.
 <!-- SECTION:NOTES:END -->

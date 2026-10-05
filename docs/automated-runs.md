@@ -20,6 +20,10 @@ On success it prints the `[ERROR]` count, the state-loss count and four timings:
 
 `menu` waits for the main menu and posts three mouse clicks (LOAD GAME, the first Turn 10 save row, LOAD SAVE) with `osascript -l JavaScript`. Use it for the mod-off arm of the TASK-007 comparison. The save row is positional, so the run still verifies the save from the log.
 
+## Profiler switch
+
+The per-second profiler, bundle trackers and capture hooks are applied only when `Mods/x2_load_profiler/profiler.txt` contains `true`, and `bundle_log.txt` has an effect only with the profiler on. The bundle cap fix does not depend on it, and the auto-load patches are applied whenever `auto_load.txt` exists. `run.py` does not write `profiler.txt`; create or remove it before a run to choose the fix-only or fix-plus-profiler arm. At the shipping log level the profiler's WARN lines are dropped, so the file is the only record of which arm ran.
+
 ## Warm loads
 
 `--warm-loads N` repeats the load N times after the first one without restarting the game: it opens the in-game menu, LOAD GAME, picks the baseline save row and LOAD SAVE, then waits for the next playable marker and checks the queued path. The first load is cold and the rest are warm; the script prints timings for each. It needs the same macOS permissions as menu mode. A save made in-game with the profiler enabled triggers a "Missing Content" confirmation when loaded with the profiler disabled, so warm loads use the baseline save, which has no mod dependency. Both load lists are positional (`GAME_MENU_SAVE_ROW`, `MENU_SAVE_ROW`): an extra save above the baseline row shifts it by 55 px.

@@ -217,3 +217,33 @@ What a mod could do, and the evidence:
 - **Skip the unload of assets the target load will request again (candidate for TASK-010.07).** Evidence it is safe: the same descriptors are loaded again moments after the unload, so the resulting resident assets are the same content; the capture shows no path loaded twice in a window, so there is no case where the second copy differs. Evidence still missing: whether any loaded asset keeps mutable state or post-load processing results that the unload/reload resets (templates are the largest class, 1097 + 892 + 645). The 010.07 experiment has to show an identical error count (5 per load), identical state-loss counts and an identical post-load save before it ships. Upper bound if the whole set were skipped: 2574 of 5497 pre-setup loads, about 9.3 s of the 19.9 s by count. Their 75% share of summed load time suggests the saving could be larger than the count share, because they are the slow classes, but that is not a wall-time measurement.
 - **Defer or skip the 481 strategy-scope first loads.** Not supported by the evidence yet. They are requested by the load screen manifest and the capture cannot show whether ground combat ever reads them. Skipping them without a usage trace risks a missing-asset error at the first access, so this needs a read-tracking experiment first.
 - **Nothing to remove as duplicate or load-then-release work** inside a single load: both counts are zero.
+
+## Profiler overhead and mod split (TASK-010.02)
+
+`x2_load_profiler` used to apply every patch through the game's `PatchAll`, so the "mod on" arms above ran the per-frame `UpdateTasks` profiler, the `AssetBundleFileLoadOperation` `CanStart`/`Start`/`Update` trackers and the capture hooks along with the fix. Those patches are now applied from `Create` only when `Mods/x2_load_profiler/profiler.txt` contains `true` (default off). The fix (`BundleConcurrencyPatch`, still on `PatchAll`) does not consult the switch. The auto-load patches are applied only when `auto_load.txt` exists. `bundle_log.txt` has an effect only when the profiler is on. Switch logic is `ProfilerSwitch` (`src/x2_load_profiler/profiler_switch.cs`, 5 tests written first), the patch list is `instrumentation_patches.cs`.
+
+Checks that the switch works: two auto-load launches with `bundle_log.txt` present wrote 0 bytes to `bundle_loads.tsv` with the profiler off and 1.9 MB with it on, and the auto-load harness worked in both. The shipping log level drops the profiler's WARN lines, so the logs cannot show which arm had the profiler on; the arm was set by the presence of `profiler.txt`.
+
+Six launches on 2026-10-05 (`run70-*`), each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), shipping `log4net.xml`, `optimizing.json` at `{}`, timing mod on in all arms, interleaved fix, none, profiler, fix, none, profiler. "Neither" means the `x2_load_profiler` pack disabled. Every launch has 15 `[ERROR]` lines and 30 state-loss matches (5 and 10 per load), the same as earlier shipping-level runs.
+
+| Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
+|---|---|---|---|---|---|
+| run70-none-a | neither | 24.24 s | 40.92 s | 23.51, 23.46 s | 33.43, 33.07 s |
+| run70-none-b | neither | 22.55 s | 39.10 s | 23.42, 23.55 s | 33.10, 32.99 s |
+| run70-fix-a | fix only | 20.29 s | 37.29 s | 21.39, 21.24 s | 31.56, 31.09 s |
+| run70-fix-b | fix only | 19.02 s | 35.88 s | 21.65, 21.10 s | 31.43, 31.18 s |
+| run70-prof-a | fix plus profiler | 22.00 s | 38.59 s | 21.28, 21.29 s | 31.18, 31.21 s |
+| run70-prof-b | fix plus profiler | 20.29 s | 37.18 s | 21.47, 21.19 s | 30.80, 31.24 s |
+
+| | Neither | Fix only | Fix plus profiler | Fix gain (neither to fix only) | Profiler overhead (fix only to fix plus profiler) |
+|---|---|---|---|---|---|
+| Cold intro to setup (mean of 2) | 23.40 s | 19.66 s | 21.15 s | -3.74 s (-16%) | +1.49 s |
+| Cold queue to playable (mean of 2) | 40.01 s | 36.59 s | 37.89 s | -3.42 s (-9%) | +1.30 s |
+| Warm intro to setup (mean of 4) | 23.49 s | 21.35 s | 21.31 s | -2.14 s (-9%) | -0.04 s |
+| Warm queue to playable (mean of 4) | 33.15 s | 31.32 s | 31.11 s | -1.83 s (-6%) | -0.21 s |
+
+The profiler costs about 1.3 to 1.5 s on the cold load and nothing measurable on warm loads. The cold figure rests on 2 launches per arm with a spread of 1.7 to 1.8 s inside each arm, so it is indicative, not precise; the warm figures agree to within 0.2 s across 4 loads. The fix alone removes 3.4 to 3.7 s from the cold load and 1.8 to 2.1 s from warm loads. The earlier "mod on" gains (3.6 s cold intro to setup at the shipping level) were measured with the profiler running and so understate the cold gain of the fix by about 1.5 s. The fix-only gain is smaller on warm loads here (2.1 s) than the earlier warm figure (3.0 s); the neither arm in this set is 0.7 s faster than the earlier mod-off arm, which fits the run-to-run drift noted above.
+
+### Decision: one mod with an opt-in switch
+
+`x2_load_profiler` stays a single mod. The profiler is a development tool for this repository, and the load fix, the profiler, the capture hooks and the auto-load harness share `ProfilerSwitch`-independent plumbing (`BundleConcurrency` constants, the lifecycle, `scripts/run.py` expectations). Splitting would mean a second manifest, UID, `contentpacks.json` entry and install step for something a player never enables, plus either duplicated code or a shared dependency between two content packs, with no runtime gain: with the switch off the profiler patches are not applied at all, so the fix-only configuration carries zero instrumentation. The shipped default is fix only. Revisit the split only if the profiler is to be distributed to other people.

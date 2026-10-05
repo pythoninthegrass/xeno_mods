@@ -223,6 +223,15 @@ def leftover_archive_name(run_name: str, prefix: str) -> str:
     return f"{prefix}{run_name}"
 
 
+def cloud_sync_blocked(console_log: str) -> bool:
+    """True when the latest syncfailed line has no later completed launch after it."""
+    failed = console_log.rfind("syncfailed")
+    return (
+        failed != -1
+        and console_log.rfind("LaunchApp changed task to Completed") < failed
+    )
+
+
 def parse_point(text: str) -> tuple[int, int]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 2:
@@ -363,9 +372,8 @@ def preflight(s: Settings) -> None:
         != 0
     ):
         raise RunError("CrossOver Steam is not running; start it and log in first")
-    if (
-        s.steam_console_log.exists()
-        and "syncfailed" in s.steam_console_log.read_text(errors="replace")[-20000:]
+    if s.steam_console_log.exists() and cloud_sync_blocked(
+        s.steam_console_log.read_text(errors="replace")
     ):
         raise RunError(
             "Steam console_log.txt reports a failed cloud sync; disable Steam Cloud sync for Xenonauts 2"

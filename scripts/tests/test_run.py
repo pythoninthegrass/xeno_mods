@@ -179,6 +179,21 @@ class CountStateLossTests(unittest.TestCase):
         self.assertEqual(run.count_state_loss(LOG, "state-loss"), 0)
 
 
+class CloudSyncTests(unittest.TestCase):
+    FAIL = '[2026-10-05 01:12:09] GameAction [AppID 538030, ActionID 19] : LaunchApp waiting for user response to SynchronizingCloud "syncfailed"\n'
+    DONE = '[2026-10-05 01:23:43] GameAction [AppID 538030, ActionID 23] : LaunchApp changed task to Completed with ""\n'
+
+    def test_pending_when_the_last_sync_failure_has_no_later_completed_launch(self):
+        self.assertTrue(run.cloud_sync_blocked(self.DONE + self.FAIL))
+
+    def test_not_pending_once_a_later_launch_completed(self):
+        self.assertFalse(run.cloud_sync_blocked(self.FAIL + self.DONE))
+
+    def test_not_pending_without_a_failure(self):
+        self.assertFalse(run.cloud_sync_blocked(self.DONE))
+        self.assertFalse(run.cloud_sync_blocked(""))
+
+
 class ArchiveNameTests(unittest.TestCase):
     def test_leftover_logs_are_filed_under_the_run_name(self):
         self.assertEqual(

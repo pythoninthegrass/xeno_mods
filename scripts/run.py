@@ -36,16 +36,17 @@ from pathlib import Path
 DEFAULT_BOTTLE = "~/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
 DEFAULT_LAUNCHER_APP = "~/Applications/CrossOver/Steam/Xenonauts 2.app"
 DEFAULT_SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
-GAME_PROCESS_PATTERN = "[X]enonauts2.exe"
-STEAM_PROCESS_PATTERN = "[s]team.exe"
-PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
-MENU_READY_MARKER = "XenonautsLoadScreen: Outro Complete"
+DEFAULT_GAME_PROCESS_PATTERN = "[X]enonauts2.exe"
+DEFAULT_STEAM_PROCESS_PATTERN = "[s]team.exe"
+DEFAULT_PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
+DEFAULT_MENU_READY_MARKER = "XenonautsLoadScreen: Outro Complete"
+DEFAULT_STATE_LOSS_PATTERN = "state-loss"
+DEFAULT_MOD_NAME = "x2_load_profiler"
+DEFAULT_LEFTOVER_ARCHIVE_PREFIX = "pre-"
 QUEUED_MARKER = "Queued LoadGameCommand"
 SETUP_MARKER = "Handling Setup for GroundCombat"
 INTRO_MARKER = "XenonautsLoadScreen: Intro Complete"
 LOSE_FOCUS_MARKER = "LoadingWorld - Handled LoseFocusScreenReport"
-POLL_INTERVAL_S = 0.5
-QUIT_GRACE_S = 15
 
 HEADER_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}) \[(\w+)\] ")
 QUEUED_PATH_RE = re.compile(
@@ -106,6 +107,15 @@ class Settings:
     menu_load_game: tuple[int, int]
     menu_save_row: tuple[int, int]
     menu_load_save: tuple[int, int]
+    mod_name: str
+    leftover_archive_prefix: str
+    state_loss_pattern: str
+    playable_marker: str
+    menu_ready_marker: str
+    game_process_pattern: str
+    steam_process_pattern: str
+    quit_grace_s: int
+    poll_interval_s: float
 
     @property
     def logs_dir(self) -> Path:
@@ -113,7 +123,7 @@ class Settings:
 
     @property
     def mod_dir(self) -> Path:
-        return self.data_dir / "Mods" / "x2_load_profiler"
+        return self.data_dir / "Mods" / self.mod_name
 
     @property
     def auto_load_file(self) -> Path:
@@ -182,13 +192,15 @@ def is_expected_save(path: str | None, save_rel: str) -> bool:
     )
 
 
-def find_timings(entries: list[Entry]) -> Timings:
+def find_timings(
+    entries: list[Entry], playable_marker: str = DEFAULT_PLAYABLE_MARKER
+) -> Timings:
     queued = next((e.ts for e in entries if QUEUED_MARKER in e.message), None)
     if queued is None:
         return Timings(None, None, None, None, None)
     after = [e for e in entries if e.ts >= queued]
     setup = next((e.ts for e in after if SETUP_MARKER in e.message), None)
-    playable = next((e.ts for e in after if PLAYABLE_MARKER in e.message), None)
+    playable = next((e.ts for e in after if playable_marker in e.message), None)
     before_setup = [e for e in after if setup is None or e.ts <= setup]
     intro = next(
         (e.ts for e in reversed(before_setup) if INTRO_MARKER in e.message), None
@@ -203,12 +215,12 @@ def count_errors(text: str) -> int:
     return sum(1 for e in parse_entries(text) if e.level == "ERROR")
 
 
-def count_state_loss(text: str) -> int:
-    return len(re.findall("state-loss", text, re.IGNORECASE))
+def count_state_loss(text: str, pattern: str) -> int:
+    return len(re.findall(pattern, text, re.IGNORECASE))
 
 
-def leftover_archive_name(run_name: str) -> str:
-    return f"pre-{run_name}"
+def leftover_archive_name(run_name: str, prefix: str) -> str:
+    return f"{prefix}{run_name}"
 
 
 def parse_point(text: str) -> tuple[int, int]:
@@ -260,12 +272,9 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
     from decouple import Config, RepositoryEnv
 
     env_file = cwd / ".env"
-    if env_file.exists():
-        config = Config(RepositoryEnv(str(env_file)))
-    elif env is not None:
-        config = Config(_MappingRepository(env))
-    else:
-        config = Config(_MappingRepository(os.environ))
+    file_values = RepositoryEnv(str(env_file)).data if env_file.exists() else {}
+    process_env = os.environ if env is None else env
+    config = Config(_MappingRepository({**file_values, **process_env}))
 
     def path(key: str, default: str) -> Path:
         return Path(config(key, default=default)).expanduser()
@@ -292,33 +301,55 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         menu_load_game=parse_point(config("MENU_LOAD_GAME", default="1331,1302")),
         menu_save_row=parse_point(config("MENU_SAVE_ROW", default="947,426")),
         menu_load_save=parse_point(config("MENU_LOAD_SAVE", default="960,1112")),
+        mod_name=config("MOD_NAME", default=DEFAULT_MOD_NAME),
+        leftover_archive_prefix=config(
+            "LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX
+        ),
+        state_loss_pattern=config(
+            "STATE_LOSS_PATTERN", default=DEFAULT_STATE_LOSS_PATTERN
+        ),
+        playable_marker=config("PLAYABLE_MARKER", default=DEFAULT_PLAYABLE_MARKER),
+        menu_ready_marker=config(
+            "MENU_READY_MARKER", default=DEFAULT_MENU_READY_MARKER
+        ),
+        game_process_pattern=config(
+            "GAME_PROCESS_PATTERN", default=DEFAULT_GAME_PROCESS_PATTERN
+        ),
+        steam_process_pattern=config(
+            "STEAM_PROCESS_PATTERN", default=DEFAULT_STEAM_PROCESS_PATTERN
+        ),
+        quit_grace_s=config("QUIT_GRACE_S", default=15, cast=int),
+        poll_interval_s=config("POLL_INTERVAL_S", default=0.5, cast=float),
     )
 
 
-def game_pids() -> list[int]:
+def game_pids(s: Settings) -> list[int]:
     result = subprocess.run(
-        ["pgrep", "-f", GAME_PROCESS_PATTERN], capture_output=True, text=True
+        ["pgrep", "-f", s.game_process_pattern], capture_output=True, text=True
     )
     return [int(p) for p in result.stdout.split()]
 
 
-def wait_until(predicate: Callable[[], bool], timeout_s: float) -> bool:
+def wait_until(
+    predicate: Callable[[], bool], timeout_s: float, poll_interval_s: float
+) -> bool:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         if predicate():
             return True
-        time.sleep(POLL_INTERVAL_S)
+        time.sleep(poll_interval_s)
     return predicate()
 
 
-def stop_game() -> None:
+def stop_game(s: Settings) -> None:
     """SIGTERM the game, then SIGKILL if it is still alive after the grace period."""
-    if not game_pids():
+    gone = lambda: not game_pids(s)  # noqa: E731
+    if gone():
         return
-    subprocess.run(["pkill", "-TERM", "-f", GAME_PROCESS_PATTERN])
-    if not wait_until(lambda: not game_pids(), QUIT_GRACE_S):
-        subprocess.run(["pkill", "-KILL", "-f", GAME_PROCESS_PATTERN])
-        if not wait_until(lambda: not game_pids(), 5):
+    subprocess.run(["pkill", "-TERM", "-f", s.game_process_pattern])
+    if not wait_until(gone, s.quit_grace_s, s.poll_interval_s):
+        subprocess.run(["pkill", "-KILL", "-f", s.game_process_pattern])
+        if not wait_until(gone, 5, s.poll_interval_s):
             raise RunError("the game process would not exit")
 
 
@@ -327,7 +358,7 @@ def preflight(s: Settings) -> None:
         raise RunError(f"launcher app not found: {s.launcher_app}")
     if (
         subprocess.run(
-            ["pgrep", "-f", STEAM_PROCESS_PATTERN], capture_output=True
+            ["pgrep", "-f", s.steam_process_pattern], capture_output=True
         ).returncode
         != 0
     ):
@@ -345,7 +376,7 @@ def archive_leftover_logs(s: Settings, run_name: str) -> None:
     leftovers = sorted(s.logs_dir.glob("output.log*"))
     if not leftovers:
         return
-    dest = s.logs_dir / leftover_archive_name(run_name)
+    dest = s.logs_dir / leftover_archive_name(run_name, s.leftover_archive_prefix)
     dest.mkdir(parents=True)
     for f in leftovers:
         shutil.move(f, dest / f.name)
@@ -359,7 +390,9 @@ def read_log(s: Settings) -> str:
 def wait_for_log(
     s: Settings, predicate: Callable[[list[Entry]], bool], timeout_s: float
 ) -> bool:
-    return wait_until(lambda: predicate(parse_entries(read_log(s))), timeout_s)
+    return wait_until(
+        lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval_s
+    )
 
 
 JXA_CLICK = """
@@ -388,7 +421,7 @@ def click(point: tuple[int, int]) -> None:
 def menu_load(s: Settings) -> None:
     if not wait_for_log(
         s,
-        lambda es: any(MENU_READY_MARKER in e.message for e in es),
+        lambda es: any(s.menu_ready_marker in e.message for e in es),
         s.launch_timeout_s,
     ):
         raise RunError(
@@ -402,13 +435,15 @@ def menu_load(s: Settings) -> None:
 
 def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     s.logs_dir.mkdir(parents=True, exist_ok=True)
-    stop_game()
+    stop_game(s)
     archive_leftover_logs(s, run_name)
     if load == "auto":
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
     print(f"launching {s.launcher_app.name} (load={load})")
     subprocess.run(["open", str(s.launcher_app)], check=True)
-    if not wait_until(lambda: bool(game_pids()), s.launch_timeout_s):
+    if not wait_until(
+        lambda: bool(game_pids(s)), s.launch_timeout_s, s.poll_interval_s
+    ):
         raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout_s} s")
     if load == "menu":
         menu_load(s)
@@ -425,21 +460,23 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
     if not is_expected_save(queued, s.save_rel):
         raise RunError(f"wrong save loaded: expected {s.save_rel}, log shows {queued}")
     if not wait_for_log(
-        s, lambda es: any(PLAYABLE_MARKER in e.message for e in es), s.load_timeout_s
+        s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout_s
     ):
         raise RunError(
             f"playable marker not reached within {s.load_timeout_s} s of the save being queued"
         )
     text = read_log(s)
-    stop_game()
+    stop_game(s)
 
     dest = s.logs_dir / run_name
     dest.mkdir(parents=True)
     for f in sorted(s.logs_dir.glob("output.log*")):
         shutil.move(f, dest / f.name)
     print(f"logs archived to {dest}")
-    print(f"errors: {count_errors(text)}, state-loss: {count_state_loss(text)}")
-    return find_timings(parse_entries(text))
+    print(
+        f"errors: {count_errors(text)}, state-loss: {count_state_loss(text, s.state_loss_pattern)}"
+    )
+    return find_timings(parse_entries(text), s.playable_marker)
 
 
 def format_seconds(value: float | None) -> str:
@@ -464,7 +501,10 @@ def main(argv: list[str]) -> int:
     try:
         validate_run_name(args.run_name)
         s = load_settings(Path.cwd())
-        for taken in (args.run_name, leftover_archive_name(args.run_name)):
+        for taken in (
+            args.run_name,
+            leftover_archive_name(args.run_name, s.leftover_archive_prefix),
+        ):
             if (s.logs_dir / taken).exists():
                 raise RunError(f"{s.logs_dir / taken} already exists")
         preflight(s)
@@ -485,7 +525,7 @@ def main(argv: list[str]) -> int:
         failure = f"command failed: {exc}"
     finally:
         try:
-            stop_game()
+            stop_game(s)
         except RunError as exc:
             failure = failure or str(exc)
         s.auto_load_file.unlink(missing_ok=True)

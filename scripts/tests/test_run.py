@@ -173,18 +173,53 @@ class CountStateLossTests(unittest.TestCase):
             "2026-10-05 01:00:01,000",
             "Handled ExceptionReport: SyntheticException : [FSM state-loss:inaccessible] x",
         )
-        self.assertEqual(run.count_state_loss(text), 2)
+        self.assertEqual(run.count_state_loss(text, "state-loss"), 2)
 
     def test_zero_without_matches(self):
-        self.assertEqual(run.count_state_loss(LOG), 0)
+        self.assertEqual(run.count_state_loss(LOG, "state-loss"), 0)
 
 
 class ArchiveNameTests(unittest.TestCase):
     def test_leftover_logs_are_filed_under_the_run_name(self):
-        self.assertEqual(run.leftover_archive_name("run7-auto"), "pre-run7-auto")
+        self.assertEqual(
+            run.leftover_archive_name("run7-auto", "pre-"), "pre-run7-auto"
+        )
 
 
 class ConfigTests(unittest.TestCase):
+    def test_precedence_is_process_env_then_env_file_then_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".env").write_text("LOAD_TIMEOUT_S=7\nLAUNCH_TIMEOUT_S=8\n")
+            s = run.load_settings(Path(d), env={"LOAD_TIMEOUT_S": "5"})
+        self.assertEqual(s.load_timeout_s, 5)
+        self.assertEqual(s.launch_timeout_s, 8)
+        self.assertEqual(s.quit_grace_s, 15)
+
+    def test_naming_and_marker_settings_have_defaults_and_can_be_overridden(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={})
+            o = run.load_settings(
+                Path(d),
+                env={
+                    "LEFTOVER_ARCHIVE_PREFIX": "old-",
+                    "STATE_LOSS_PATTERN": "boom",
+                    "PLAYABLE_MARKER": "ready",
+                    "MOD_NAME": "other_mod",
+                },
+            )
+        self.assertEqual(s.leftover_archive_prefix, "pre-")
+        self.assertEqual(s.state_loss_pattern, "state-loss")
+        self.assertEqual(s.playable_marker, "GCUI: BlockOnLocalPlayerTurn")
+        self.assertEqual(s.menu_ready_marker, "XenonautsLoadScreen: Outro Complete")
+        self.assertEqual(s.mod_name, "x2_load_profiler")
+        self.assertEqual(s.game_process_pattern, "[X]enonauts2.exe")
+        self.assertEqual(s.steam_process_pattern, "[s]team.exe")
+        self.assertEqual(s.poll_interval_s, 0.5)
+        self.assertEqual(o.leftover_archive_prefix, "old-")
+        self.assertEqual(o.state_loss_pattern, "boom")
+        self.assertEqual(o.playable_marker, "ready")
+        self.assertEqual(o.mod_dir.name, "other_mod")
+
     def test_defaults_without_an_env_file(self):
         with tempfile.TemporaryDirectory() as d:
             s = run.load_settings(Path(d), env={})

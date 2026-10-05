@@ -1,0 +1,213 @@
+#!/usr/bin/env -S uv run --script
+
+# /// script
+# requires-python = ">=3.13,<3.14"
+# dependencies = ["python-decouple>=3.8"]
+# ///
+
+"""Unit tests for run.py: log parsing, timing anchors, config loading and snapshot helpers.
+
+Hermetic: no game, no Steam, no desktop automation.
+"""
+
+import sys
+import tempfile
+import unittest
+from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import run  # noqa: E402
+
+SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
+SAVE_ABS = f"C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/{SAVE_REL}"
+
+
+def entry(ts: str, message: str, level: str = "INFO") -> str:
+    """One log record in the game's wrapped format: header line, message line, blank line."""
+    return f"{ts} [{level}] [Content Manager Main Thread] Some.Logger (F:\\x.cs:1) \n{message}\n\n"
+
+
+LOG = (
+    entry("2026-10-05 01:24:19,495", f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FD[UNRESOLVED]>FileSystem::{SAVE_ABS})")
+    + entry("2026-10-05 01:24:20,081", "Xenonauts.XenonautsLoadScreen: Intro Complete")
+    + entry("2026-10-05 01:24:22,000", "LoadingWorld - Handled LoseFocusScreenReport: LifecycleEvent (Type: LoseFocus)")
+    + entry("2026-10-05 01:24:42,713", "LoadScreen, Handling Setup for GroundCombat")
+    + entry("2026-10-05 01:24:50,899", "something failed", level="ERROR")
+    + entry("2026-10-05 01:25:03,108", "GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]")
+)
+
+
+class ParseEntriesTests(unittest.TestCase):
+    def test_timestamp_comes_from_the_header_line_and_message_from_the_next(self):
+        entries = run.parse_entries(LOG)
+        self.assertEqual(entries[0].ts, datetime(2026, 10, 5, 1, 24, 19, 495000))
+        self.assertTrue(entries[0].message.startswith("MainMenuWorld - Queued LoadGameCommand"))
+
+    def test_multiline_messages_are_joined(self):
+        text = "2026-10-05 01:00:00,000 [INFO] [t] L (f:1) \nfirst\nsecond\n\n"
+        self.assertEqual(run.parse_entries(text)[0].message, "first\nsecond")
+
+    def test_text_before_the_first_header_is_ignored(self):
+        self.assertEqual(len(run.parse_entries("noise\n" + LOG)), 6)
+
+    def test_empty_text_has_no_entries(self):
+        self.assertEqual(run.parse_entries(""), [])
+
+
+class QueuedSaveTests(unittest.TestCase):
+    def test_extracts_path_from_unresolved_descriptor(self):
+        self.assertEqual(run.queued_save_path(run.parse_entries(LOG)), SAVE_ABS)
+
+    def test_extracts_path_from_resolved_descriptor(self):
+        text = entry("2026-10-05 01:16:35,228", f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::{SAVE_ABS})")
+        self.assertEqual(run.queued_save_path(run.parse_entries(text)), SAVE_ABS)
+
+    def test_none_when_nothing_was_queued(self):
+        self.assertIsNone(run.queued_save_path(run.parse_entries(entry("2026-10-05 01:00:00,000", "hello"))))
+
+    def test_first_queued_command_wins(self):
+        text = entry("2026-10-05 01:00:00,000", "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/first.json)") + entry(
+            "2026-10-05 01:00:01,000", "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/second.json)"
+        )
+        self.assertEqual(run.queued_save_path(run.parse_entries(text)), "C:/a/first.json")
+
+    def test_is_expected_save_matches_on_the_relative_path(self):
+        self.assertTrue(run.is_expected_save(SAVE_ABS, SAVE_REL))
+        self.assertFalse(run.is_expected_save(SAVE_ABS.replace("turn_10", "turn_2"), SAVE_REL))
+        self.assertFalse(run.is_expected_save(None, SAVE_REL))
+
+    def test_is_expected_save_accepts_backslash_paths(self):
+        self.assertTrue(run.is_expected_save(SAVE_ABS.replace("/", "\\"), SAVE_REL))
+
+
+class TimingsTests(unittest.TestCase):
+    def setUp(self):
+        self.t = run.find_timings(run.parse_entries(LOG))
+
+    def test_anchors_are_found(self):
+        self.assertEqual(self.t.queued, datetime(2026, 10, 5, 1, 24, 19, 495000))
+        self.assertEqual(self.t.setup, datetime(2026, 10, 5, 1, 24, 42, 713000))
+        self.assertEqual(self.t.playable, datetime(2026, 10, 5, 1, 25, 3, 108000))
+
+    def test_durations(self):
+        self.assertAlmostEqual(self.t.queue_to_setup, 23.218, places=3)
+        self.assertAlmostEqual(self.t.queue_to_playable, 43.613, places=3)
+        self.assertAlmostEqual(self.t.intro_to_setup, 22.632, places=3)
+        self.assertAlmostEqual(self.t.lose_focus_to_setup, 20.713, places=3)
+
+    def test_lose_focus_gap_is_none_without_the_event(self):
+        text = LOG.replace("LoadingWorld - Handled LoseFocusScreenReport", "Other")
+        t = run.find_timings(run.parse_entries(text))
+        self.assertIsNone(t.lose_focus_to_setup)
+        self.assertIsNotNone(t.intro_to_setup)
+
+    def test_nothing_is_reported_before_the_queue(self):
+        text = entry("2026-10-05 01:00:00,000", "LoadScreen, Handling Setup for GroundCombat") + LOG
+        t = run.find_timings(run.parse_entries(text))
+        self.assertEqual(t.setup, datetime(2026, 10, 5, 1, 24, 42, 713000))
+
+    def test_intro_complete_after_setup_is_not_the_anchor(self):
+        text = LOG + entry("2026-10-05 01:25:02,097", "Xenonauts.XenonautsLoadScreen: Intro Complete")
+        t = run.find_timings(run.parse_entries(text))
+        self.assertAlmostEqual(t.intro_to_setup, 22.632, places=3)
+
+    def test_everything_is_none_for_an_empty_log(self):
+        t = run.find_timings([])
+        self.assertIsNone(t.queue_to_playable)
+        self.assertIsNone(t.queue_to_setup)
+
+
+class CountErrorsTests(unittest.TestCase):
+    def test_counts_error_level_records(self):
+        self.assertEqual(run.count_errors(LOG), 1)
+
+    def test_ignores_error_text_inside_messages(self):
+        self.assertEqual(run.count_errors(entry("2026-10-05 01:00:00,000", "the [ERROR] word")), 0)
+
+
+class ConfigTests(unittest.TestCase):
+    def test_defaults_without_an_env_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={})
+        self.assertEqual(s.load_timeout_s, 120)
+        self.assertEqual(s.save_rel, SAVE_REL)
+        self.assertTrue(str(s.data_dir).endswith("Goldhawk Interactive/Xenonauts 2"))
+
+    def test_env_file_in_the_calling_directory_overrides_defaults(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / ".env").write_text("LOAD_TIMEOUT_S=7\nSAVE_REL=Saves/x.json\n")
+            s = run.load_settings(Path(d), env={})
+        self.assertEqual(s.load_timeout_s, 7)
+        self.assertEqual(s.save_rel, "Saves/x.json")
+
+    def test_process_environment_is_used_when_there_is_no_env_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={"LAUNCH_TIMEOUT_S": "9"})
+        self.assertEqual(s.launch_timeout_s, 9)
+
+    def test_bottle_setting_moves_the_derived_paths(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={"BOTTLE": "/b"})
+        self.assertEqual(s.game_dir, Path("/b/Program Files (x86)/Steam/steamapps/common/Xenonauts2"))
+        self.assertEqual(s.data_dir, Path("/b/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"))
+
+    def test_menu_points_default_to_the_spike_coordinates(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={})
+        self.assertEqual(s.menu_load_game, (1331, 1302))
+        self.assertEqual(s.menu_save_row, (947, 426))
+        self.assertEqual(s.menu_load_save, (960, 1112))
+
+
+class ParsePointTests(unittest.TestCase):
+    def test_parses_x_comma_y(self):
+        self.assertEqual(run.parse_point("1331,1302"), (1331, 1302))
+        self.assertEqual(run.parse_point(" 5 , 6 "), (5, 6))
+
+    def test_rejects_bad_input(self):
+        for bad in ["", "1", "1,2,3", "a,b"]:
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    run.parse_point(bad)
+
+
+class AutoLoadTextTests(unittest.TestCase):
+    def test_names_the_save_in_the_mod_file_format(self):
+        self.assertEqual(run.auto_load_text(SAVE_ABS), f"save={SAVE_ABS}\n")
+
+
+class RunNameTests(unittest.TestCase):
+    def test_accepts_simple_names(self):
+        for ok in ["run7", "run7-auto", "mod_off.2"]:
+            with self.subTest(ok=ok):
+                run.validate_run_name(ok)
+
+    def test_rejects_names_that_escape_the_logs_folder(self):
+        for bad in ["", ".", "..", "a/b", "../x", "a b"]:
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    run.validate_run_name(bad)
+
+
+class SnapshotTests(unittest.TestCase):
+    def test_hash_files_records_missing_files_as_none(self):
+        with tempfile.TemporaryDirectory() as d:
+            present = Path(d) / "a.json"
+            present.write_text("{}")
+            hashes = run.hash_files([present, Path(d) / "missing.json"])
+        self.assertEqual(len(hashes[present]), 64)
+        self.assertIsNone(hashes[Path(d) / "missing.json"])
+
+    def test_changed_files_reports_modified_created_and_removed(self):
+        a, b, c, d = (Path(n) for n in "abcd")
+        before = {a: "1", b: "2", c: None, d: "4"}
+        after = {a: "1", b: "x", c: "3", d: None}
+        self.assertEqual(run.changed_files(before, after), [b, c, d])
+
+    def test_changed_files_is_empty_when_nothing_changed(self):
+        self.assertEqual(run.changed_files({Path("a"): "1"}, {Path("a"): "1"}), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

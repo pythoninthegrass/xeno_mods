@@ -14,30 +14,63 @@ Args:
     --load: auto queues the save from the x2_load_profiler mod (default); menu clicks through the main menu with JXA
 
 Note:
-    Performs one cold measurement run of Xenonauts 2 under CrossOver: close the game, archive logs, launch,
-    load the baseline save, wait until playable, quit, archive the run's logs.
-    Menu mode takes over mouse input on the host desktop. See docs/automated-runs.md.
+    Performs one cold measurement run of Xenonauts 2: close the game, archive logs, launch, load the
+    baseline save, wait until playable, quit, archive the run's logs. Runs on macOS under CrossOver
+    and on Linux under Proton; the defaults that differ are in PLATFORM_DEFAULTS.
+    Menu mode takes over mouse input on the desktop it runs against. See docs/automated-runs.md.
 """
 
 import argparse
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
 
-DEFAULT_BOTTLE = "~/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
-DEFAULT_LAUNCHER_APP = "~/Applications/CrossOver/Steam/Xenonauts 2.app"
+STEAM_APP_ID = "538030"
+
+DEFAULT_MACOS_BOTTLE = "~/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
+DEFAULT_LINUX_BOTTLE = f"~/.steam/steam/steamapps/compatdata/{STEAM_APP_ID}/pfx/drive_c"
+DEFAULT_MACOS_LAUNCHER_APP = "~/Applications/CrossOver/Steam/Xenonauts 2.app"
+DEFAULT_MACOS_GAME_DIR = "{bottle}/Program Files (x86)/Steam/steamapps/common/Xenonauts2"
+DEFAULT_LINUX_GAME_DIR = "~/.steam/steam/steamapps/common/Xenonauts2"
+DEFAULT_MACOS_WINE_USER = "crossover"
+DEFAULT_LINUX_WINE_USER = "steamuser"
+DEFAULT_MACOS_STEAM_CONSOLE_LOG = "{bottle}/Program Files (x86)/Steam/logs/console_log.txt"
+DEFAULT_LINUX_STEAM_CONSOLE_LOG = "~/.steam/steam/logs/console_log.txt"
+DEFAULT_MACOS_STEAM_PROCESS_PATTERN = "[s]team.exe"
+DEFAULT_LINUX_STEAM_PROCESS_PATTERN = "[s]teamwebhelper"
+DEFAULT_MACOS_LAUNCH_CMD = ("open", "{app}")
+DEFAULT_LINUX_LAUNCH_CMD = ("steam", f"steam://rungameid/{STEAM_APP_ID}")
+
+JXA_CLICK = """
+ObjC.import('CoreGraphics');
+function post(type, x, y) {
+  const e = $.CGEventCreateMouseEvent($(), type, $.CGPointMake(x, y), $.kCGMouseButtonLeft);
+  $.CGEventPost($.kCGHIDEventTap, e);
+}
+function click(x, y) {
+  post($.kCGEventMouseMoved, x, y);
+  delay(0.3);
+  post($.kCGEventLeftMouseDown, x, y);
+  delay(0.08);
+  post($.kCGEventLeftMouseUp, x, y);
+}
+click({x}, {y});
+"""
+
+DEFAULT_MACOS_CLICK_CMD = ("osascript", "-l", "JavaScript", "-e", JXA_CLICK)
+DEFAULT_LINUX_CLICK_CMD = ("xdotool", "mousemove", "{x}", "{y}", "click", "1")
 DEFAULT_SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
 DEFAULT_GAME_PROCESS_PATTERN = "[X]enonauts2.exe"
-DEFAULT_STEAM_PROCESS_PATTERN = "[s]team.exe"
 DEFAULT_PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
 DEFAULT_MENU_READY_MARKER = "XenonautsLoadScreen: Outro Complete"
 DEFAULT_STATE_LOSS_PATTERN = "state-loss"
@@ -55,6 +88,49 @@ RUN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 class RunError(Exception):
     """A failure the run reports to the user and turns into exit code 1."""
+
+
+@dataclass(frozen=True)
+class PlatformDefaults:
+    """The built-in defaults that differ between the CrossOver host and the Proton host."""
+
+    wine_user: str
+    bottle: str
+    launcher_app: str
+    """Empty where the platform launches the game without an app bundle."""
+    game_dir: str
+    steam_console_log: str
+    steam_process_pattern: str
+    launch_cmd: tuple[str, ...]
+    click_cmd: tuple[str, ...]
+
+
+PLATFORM_DEFAULTS = {
+    "darwin": PlatformDefaults(
+        wine_user=DEFAULT_MACOS_WINE_USER,
+        bottle=DEFAULT_MACOS_BOTTLE,
+        launcher_app=DEFAULT_MACOS_LAUNCHER_APP,
+        game_dir=DEFAULT_MACOS_GAME_DIR,
+        steam_console_log=DEFAULT_MACOS_STEAM_CONSOLE_LOG,
+        steam_process_pattern=DEFAULT_MACOS_STEAM_PROCESS_PATTERN,
+        launch_cmd=DEFAULT_MACOS_LAUNCH_CMD,
+        click_cmd=DEFAULT_MACOS_CLICK_CMD,
+    ),
+    "linux": PlatformDefaults(
+        wine_user=DEFAULT_LINUX_WINE_USER,
+        bottle=DEFAULT_LINUX_BOTTLE,
+        launcher_app="",
+        game_dir=DEFAULT_LINUX_GAME_DIR,
+        steam_console_log=DEFAULT_LINUX_STEAM_CONSOLE_LOG,
+        steam_process_pattern=DEFAULT_LINUX_STEAM_PROCESS_PATTERN,
+        launch_cmd=DEFAULT_LINUX_LAUNCH_CMD,
+        click_cmd=DEFAULT_LINUX_CLICK_CMD,
+    ),
+}
+
+
+def platform_defaults(platform: str) -> PlatformDefaults:
+    return PLATFORM_DEFAULTS.get(platform, PLATFORM_DEFAULTS["linux"])
 
 
 @dataclass(frozen=True)
@@ -98,7 +174,8 @@ class Settings:
     bottle: Path
     game_dir: Path
     data_dir: Path
-    launcher_app: Path
+    launcher_app: Path | None
+    wine_user: str
     save_rel: str
     launch_timeout: int
     load_timeout: int
@@ -117,6 +194,9 @@ class Settings:
     steam_process_pattern: str
     quit_grace: int
     poll_interval: float
+    steam_console_log: Path
+    launch_cmd: tuple[str, ...]
+    click_cmd: tuple[str, ...]
 
     @property
     def logs_dir(self) -> Path:
@@ -132,7 +212,7 @@ class Settings:
 
     @property
     def save_abs(self) -> str:
-        return f"C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/{self.save_rel}"
+        return f"C:/users/{self.wine_user}/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/{self.save_rel}"
 
     @property
     def guarded_config_files(self) -> list[Path]:
@@ -141,10 +221,6 @@ class Settings:
             self.mod_dir / "unity_experiment.txt",
             self.game_dir / "Assets" / "Configuration" / "log4net.xml",
         ]
-
-    @property
-    def steam_console_log(self) -> Path:
-        return self.bottle / "Program Files (x86)" / "Steam" / "logs" / "console_log.txt"
 
 
 def parse_entries(text: str) -> list[Entry]:
@@ -234,6 +310,24 @@ def cloud_sync_blocked(console_log: str) -> bool:
     return failed != -1 and console_log.rfind("LaunchApp changed task to Completed") < failed
 
 
+def substitute(argv: Sequence[str], replacements: Mapping[str, str]) -> list[str]:
+    """Literal token replacement, not str.format: the JXA clicker's own braces must survive."""
+    out = []
+    for arg in argv:
+        for token, value in replacements.items():
+            arg = arg.replace(token, value)
+        out.append(arg)
+    return out
+
+
+def launch_command(s: Settings) -> list[str]:
+    return substitute(s.launch_cmd, {"{app}": str(s.launcher_app) if s.launcher_app else ""})
+
+
+def click_command(s: Settings, point: tuple[int, int]) -> list[str]:
+    return substitute(s.click_cmd, {"{x}": str(point[0]), "{y}": str(point[1])})
+
+
 def parse_point(text: str) -> tuple[int, int]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 2:
@@ -271,31 +365,40 @@ class _MappingRepository:
         return self.data[key]
 
 
-def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
+def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str = sys.platform) -> Settings:
     from decouple import Config, RepositoryEnv
+
+    d = platform_defaults(platform)
 
     env_file = cwd / ".env"
     file_values = RepositoryEnv(str(env_file)).data if env_file.exists() else {}
     process_env = os.environ if env is None else env
     config = Config(_MappingRepository({**file_values, **process_env}))
 
-    def path(key: str, default: str) -> Path:
-        return Path(config(key, default=default)).expanduser()
+    def command(key: str, default: tuple[str, ...]) -> tuple[str, ...]:
+        """Overrides are shell-quoted strings; the defaults stay tuples because the JXA clicker cannot survive a split."""
+        value = config(key, default="")
+        return tuple(shlex.split(value)) if value else default
 
-    bottle = path("BOTTLE", DEFAULT_BOTTLE)
-    game_dir = path(
-        "GAME_DIR",
-        str(bottle / "Program Files (x86)/Steam/steamapps/common/Xenonauts2"),
-    )
+    bottle = Path(config("BOTTLE", default=d.bottle)).expanduser()
+
+    def path(key: str, default: str) -> Path:
+        """'{bottle}' expands to the configured bottle, in the default and in a configured value alike."""
+        return Path(config(key, default=default).replace("{bottle}", str(bottle))).expanduser()
+
+    wine_user = config("WINE_USER", default=d.wine_user)
+    game_dir = path("GAME_DIR", d.game_dir)
     data_dir = path(
         "DATA_DIR",
-        str(bottle / "users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"),
+        str(bottle / f"users/{wine_user}/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"),
     )
+    launcher_app = config("LAUNCHER_APP", default=d.launcher_app)
     return Settings(
         bottle=bottle,
         game_dir=game_dir,
         data_dir=data_dir,
-        launcher_app=path("LAUNCHER_APP", DEFAULT_LAUNCHER_APP),
+        launcher_app=Path(launcher_app).expanduser() if launcher_app else None,
+        wine_user=wine_user,
         save_rel=config("SAVE_REL", default=DEFAULT_SAVE_REL),
         launch_timeout=config("LAUNCH_TIMEOUT", default=60, cast=int),
         load_timeout=config("LOAD_TIMEOUT", default=120, cast=int),
@@ -311,9 +414,12 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         playable_marker=config("PLAYABLE_MARKER", default=DEFAULT_PLAYABLE_MARKER),
         menu_ready_marker=config("MENU_READY_MARKER", default=DEFAULT_MENU_READY_MARKER),
         game_process_pattern=config("GAME_PROCESS_PATTERN", default=DEFAULT_GAME_PROCESS_PATTERN),
-        steam_process_pattern=config("STEAM_PROCESS_PATTERN", default=DEFAULT_STEAM_PROCESS_PATTERN),
+        steam_process_pattern=config("STEAM_PROCESS_PATTERN", default=d.steam_process_pattern),
         quit_grace=config("QUIT_GRACE", default=15, cast=int),
         poll_interval=config("POLL_INTERVAL", default=0.5, cast=float),
+        steam_console_log=path("STEAM_CONSOLE_LOG", d.steam_console_log),
+        launch_cmd=command("LAUNCH_CMD", d.launch_cmd),
+        click_cmd=command("CLICK_CMD", d.click_cmd),
     )
 
 
@@ -343,9 +449,17 @@ def stop_game(s: Settings) -> None:
             raise RunError("the game process would not exit")
 
 
+def launcher_app_problem(s: Settings) -> str | None:
+    """None where the platform launches without an app bundle, so LAUNCHER_APP is unset."""
+    if s.launcher_app is not None and not s.launcher_app.exists():
+        return f"launcher app not found: {s.launcher_app}"
+    return None
+
+
 def preflight(s: Settings) -> None:
-    if not s.launcher_app.exists():
-        raise RunError(f"launcher app not found: {s.launcher_app}")
+    problem = launcher_app_problem(s)
+    if problem:
+        raise RunError(problem)
     if subprocess.run(["pgrep", "-f", s.steam_process_pattern], capture_output=True).returncode != 0:
         raise RunError("CrossOver Steam is not running; start it and log in first")
     if s.steam_console_log.exists() and cloud_sync_blocked(s.steam_console_log.read_text(errors="replace")):
@@ -371,25 +485,8 @@ def wait_for_log(s: Settings, predicate: Callable[[list[Entry]], bool], timeout_
     return wait_until(lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval)
 
 
-JXA_CLICK = """
-ObjC.import('CoreGraphics');
-function post(type, x, y) {
-  const e = $.CGEventCreateMouseEvent($(), type, $.CGPointMake(x, y), $.kCGMouseButtonLeft);
-  $.CGEventPost($.kCGHIDEventTap, e);
-}
-function click(x, y) {
-  post($.kCGEventMouseMoved, x, y);
-  delay(0.3);
-  post($.kCGEventLeftMouseDown, x, y);
-  delay(0.08);
-  post($.kCGEventLeftMouseUp, x, y);
-}
-click(%d, %d);
-"""
-
-
-def click(point: tuple[int, int]) -> None:
-    subprocess.run(["osascript", "-l", "JavaScript", "-e", JXA_CLICK % point], check=True)
+def click(s: Settings, point: tuple[int, int]) -> None:
+    subprocess.run(click_command(s, point), check=True)
 
 
 def menu_load(s: Settings) -> None:
@@ -401,7 +498,7 @@ def menu_load(s: Settings) -> None:
         raise RunError(f"main menu was not ready within {s.launch_timeout} s of launch")
     time.sleep(1)
     for point in (s.menu_load_game, s.menu_save_row, s.menu_load_save):
-        click(point)
+        click(s, point)
         time.sleep(1.5)
 
 
@@ -419,7 +516,7 @@ def warm_load(s: Settings) -> None:
         s.game_menu_save_row,
         s.menu_load_save,
     ):
-        click(point)
+        click(s, point)
         time.sleep(1.5)
     if not wait_until(lambda: count_playable(s) > before, s.load_timeout, s.poll_interval):
         raise RunError(f"playable marker not reached within {s.load_timeout} s of the warm load")
@@ -434,8 +531,9 @@ def perform_run(s: Settings, run_name: str, load: str, warm_loads: int = 0) -> l
     archive_leftover_logs(s, run_name)
     if load == "auto":
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
-    print(f"launching {s.launcher_app.name} (load={load})")
-    subprocess.run(["open", str(s.launcher_app)], check=True)
+    command = launch_command(s)
+    print(f"launching with {shlex.join(command)} (load={load})")
+    subprocess.run(command, check=True)
     if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout, s.poll_interval):
         raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout} s")
     if load == "menu":

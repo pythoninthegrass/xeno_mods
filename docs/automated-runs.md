@@ -1,6 +1,6 @@
 # Automated cold runs
 
-`scripts/run.py <run-name>` performs one cold measurement run of Xenonauts 2 under CrossOver without anyone at the keyboard: it closes the game, archives old logs, launches the game, loads the baseline save, waits until the game is playable, quits, and archives the run's logs.
+`scripts/run.py <run-name>` performs one cold measurement run of Xenonauts 2 without anyone at the keyboard: it closes the game, archives old logs, launches the game, loads the baseline save, waits until the game is playable, quits, and archives the run's logs. It runs on macOS, where the game runs under CrossOver, and on Linux, where it runs under Proton. See [Linux and Proton](#linux-and-proton) for what differs.
 
 ## Usage
 
@@ -16,15 +16,17 @@ On success it prints the `[ERROR]` count, the state-loss count and four timings:
 
 ## Load modes
 
-`auto` (default) writes `Mods/x2_load_profiler/auto_load.txt`, and the mod queues the load 0.1 s after the main menu is ready. It needs no input, no screen coordinates and no macOS permissions. It cannot be used when the profiler mod is disabled, because the mod does the loading.
+`auto` (default) writes `Mods/x2_load_profiler/auto_load.txt`, and the mod queues the load 0.1 s after the main menu is ready. It needs no input, no screen coordinates and no desktop permissions. It cannot be used when the profiler mod is disabled, because the mod does the loading.
 
-`menu` waits for the main menu and posts three mouse clicks (LOAD GAME, the first Turn 10 save row, LOAD SAVE) with `osascript -l JavaScript`. Use it for the mod-off arm of the TASK-007 comparison. The save row is positional, so the run still verifies the save from the log.
+`menu` waits for the main menu and posts three mouse clicks (LOAD GAME, the first Turn 10 save row, LOAD SAVE) with `CLICK_CMD`. Use it for the mod-off arm of the TASK-007 comparison. The save row is positional, so the run still verifies the save from the log.
 
 ## Warm loads
 
-`--warm-loads N` repeats the load N times after the first one without restarting the game: it opens the in-game menu, LOAD GAME, picks the baseline save row and LOAD SAVE, then waits for the next playable marker and checks the queued path. The first load is cold and the rest are warm; the script prints timings for each. It needs the same macOS permissions as menu mode. A save made in-game with the profiler enabled triggers a "Missing Content" confirmation when loaded with the profiler disabled, so warm loads use the baseline save, which has no mod dependency. Both load lists are positional (`GAME_MENU_SAVE_ROW`, `MENU_SAVE_ROW`): an extra save above the baseline row shifts it by 55 px.
+`--warm-loads N` repeats the load N times after the first one without restarting the game: it opens the in-game menu, LOAD GAME, picks the baseline save row and LOAD SAVE, then waits for the next playable marker and checks the queued path. The first load is cold and the rest are warm; the script prints timings for each. It needs the same desktop access as menu mode. A save made in-game with the profiler enabled triggers a "Missing Content" confirmation when loaded with the profiler disabled, so warm loads use the baseline save, which has no mod dependency. Both load lists are positional (`GAME_MENU_SAVE_ROW`, `MENU_SAVE_ROW`): an extra save above the baseline row shifts it by 55 px.
 
 ## Preconditions
+
+These are the macOS preconditions. Linux has its own list under [Linux and Proton](#linux-and-proton).
 
 - CrossOver Steam is running and logged in.
 - Steam Cloud sync is disabled for Xenonauts 2 in the game's Steam properties. Otherwise an "Unable to Sync" dialog blocks the launch; the script fails fast when the latest Steam `console_log.txt` shows a failed sync with no completed launch after it.
@@ -33,9 +35,42 @@ On success it prints the `[ERROR]` count, the state-loss count and four timings:
 
 ## Desktop takeover and permissions
 
-Auto mode does not touch the desktop beyond `open` launching the game. Menu mode takes over the mouse on the host desktop while it runs: do not use the machine until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default).
+Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default, which is the macOS display).
 
-Menu mode needs these macOS permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand.
+On macOS, menu mode needs these permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand. Linux needs no equivalent, because `xdotool` posts the events through XTEST.
+
+## Linux and Proton
+
+On Linux the game runs under Proton rather than CrossOver, and the script runs **inside** the steam-headless container, not on the host. Everything it touches lives there: the game process, the Proton prefix, `Logs/output.log`, the mod folder and the X display.
+
+```bash
+docker exec -u default -e DISPLAY=:55 steamos scripts/run.py run1-auto
+```
+
+What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAULTS`:
+
+| Setting | macOS | Linux |
+| --- | --- | --- |
+| `BOTTLE` | the CrossOver bottle's `drive_c` | `~/.steam/steam/steamapps/compatdata/538030/pfx/drive_c` |
+| `GAME_DIR` | inside the bottle | `~/.steam/steam/steamapps/common/Xenonauts2`, outside the prefix |
+| `WINE_USER` | `crossover` | `steamuser` |
+| `LAUNCHER_APP` | the CrossOver app bundle | unset; there is no app bundle |
+| `LAUNCH_CMD` | `open {app}` | `steam steam://rungameid/538030` |
+| `CLICK_CMD` | an inline `osascript -l JavaScript` program | `xdotool mousemove {x} {y} click 1` |
+| `STEAM_CONSOLE_LOG` | inside the bottle | `~/.steam/steam/logs/console_log.txt` |
+| `STEAM_PROCESS_PATTERN` | `[s]team.exe` | `[s]teamwebhelper` |
+
+`LAUNCH_CMD` and `CLICK_CMD` are shell-quoted command lines. `{app}` is replaced with `LAUNCHER_APP`, and `{x}` and `{y}` with the click point; the replacement is literal, so braces elsewhere in the command survive. `{bottle}` expands to `BOTTLE` in any path setting.
+
+Linux preconditions:
+
+- The steam-headless container is up with its X display reachable, and `DISPLAY` is set for the script.
+- Native Steam is running and logged in, with Xenonauts 2 installed and forced to a Proton version.
+- Steam Cloud sync is disabled for Xenonauts 2, as on macOS.
+- `xdotool` is installed in the container (it ships with the steam-headless image).
+- `uv` is available in the container, for the script's shebang.
+
+The click coordinates still default to the 2560x1440 macOS values. The container's display is 1920x1080, so menu mode and `--warm-loads` need all six points set in `.env` before they will work there.
 
 ## Verification and failure handling
 

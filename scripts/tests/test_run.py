@@ -224,9 +224,10 @@ class ConfigTests(unittest.TestCase):
 
     def test_naming_and_marker_settings_have_defaults_and_can_be_overridden(self):
         with tempfile.TemporaryDirectory() as d:
-            s = run.load_settings(Path(d), env={})
+            s = run.load_settings(Path(d), env={}, platform="darwin")
             o = run.load_settings(
                 Path(d),
+                platform="darwin",
                 env={
                     "LEFTOVER_ARCHIVE_PREFIX": "old-",
                     "STATE_LOSS_PATTERN": "boom",
@@ -268,7 +269,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_bottle_setting_moves_the_derived_paths(self):
         with tempfile.TemporaryDirectory() as d:
-            s = run.load_settings(Path(d), env={"BOTTLE": "/b"})
+            s = run.load_settings(Path(d), env={"BOTTLE": "/b"}, platform="darwin")
         self.assertEqual(s.game_dir, Path("/b/Program Files (x86)/Steam/steamapps/common/Xenonauts2"))
         self.assertEqual(
             s.data_dir,
@@ -283,6 +284,115 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(s.menu_load_save, (960, 1112))
 
 
+def settings(platform: str, env: dict[str, str] | None = None) -> "run.Settings":
+    """Settings as loaded on a named platform, with no .env file in the way."""
+    with tempfile.TemporaryDirectory() as d:
+        return run.load_settings(Path(d), env=env or {}, platform=platform)
+
+
+class PlatformDefaultsTests(unittest.TestCase):
+    """Defaults are pinned per platform so the suite means the same thing on either machine."""
+
+    def test_wine_user_defaults_to_the_prefix_owner_of_each_platform(self):
+        self.assertEqual(settings("darwin").wine_user, "crossover")
+        self.assertEqual(settings("linux").wine_user, "steamuser")
+
+    def test_wine_user_names_the_data_dir_and_the_save_path(self):
+        mac = settings("darwin")
+        self.assertIn("users/crossover/AppData", str(mac.data_dir))
+        self.assertTrue(mac.save_abs.startswith("C:/users/crossover/AppData"))
+
+    def test_wine_user_can_be_overridden(self):
+        s = settings("linux", {"WINE_USER": "bob"})
+        self.assertIn("users/bob/AppData", str(s.data_dir))
+        self.assertTrue(s.save_abs.startswith("C:/users/bob/AppData"))
+
+    def test_steam_console_log_is_inside_the_bottle_on_macos(self):
+        s = settings("darwin", {"BOTTLE": "/b"})
+        self.assertEqual(s.steam_console_log, Path("/b/Program Files (x86)/Steam/logs/console_log.txt"))
+
+    def test_steam_console_log_is_outside_the_prefix_on_linux(self):
+        s = settings("linux", {"BOTTLE": "/b"})
+        self.assertEqual(s.steam_console_log, Path("~/.steam/steam/logs/console_log.txt").expanduser())
+
+    def test_steam_console_log_can_be_overridden(self):
+        s = settings("linux", {"STEAM_CONSOLE_LOG": "/tmp/c.txt"})
+        self.assertEqual(s.steam_console_log, Path("/tmp/c.txt"))
+
+    def test_bottle_defaults_to_the_crossover_bottle_or_the_proton_prefix(self):
+        self.assertTrue(str(settings("darwin").bottle).endswith("CrossOver/Bottles/Steam/drive_c"))
+        self.assertTrue(str(settings("linux").bottle).endswith("steamapps/compatdata/538030/pfx/drive_c"))
+
+    def test_game_dir_is_inside_the_bottle_on_macos_and_outside_the_prefix_on_linux(self):
+        self.assertEqual(
+            settings("darwin", {"BOTTLE": "/b"}).game_dir,
+            Path("/b/Program Files (x86)/Steam/steamapps/common/Xenonauts2"),
+        )
+        self.assertEqual(
+            settings("linux", {"BOTTLE": "/b"}).game_dir,
+            Path("~/.steam/steam/steamapps/common/Xenonauts2").expanduser(),
+        )
+
+    def test_bottle_token_expands_in_a_configured_path(self):
+        s = settings("linux", {"BOTTLE": "/b", "GAME_DIR": "{bottle}/game"})
+        self.assertEqual(s.game_dir, Path("/b/game"))
+
+    def test_steam_process_pattern_matches_the_client_of_each_platform(self):
+        self.assertEqual(settings("darwin").steam_process_pattern, "[s]team.exe")
+        self.assertEqual(settings("linux").steam_process_pattern, "[s]teamwebhelper")
+
+    def test_launcher_app_is_a_macos_only_setting(self):
+        self.assertTrue(str(settings("darwin").launcher_app).endswith("Xenonauts 2.app"))
+        self.assertIsNone(settings("linux").launcher_app)
+
+    def test_launch_cmd_defaults_to_the_launcher_of_each_platform(self):
+        self.assertEqual(settings("darwin").launch_cmd, ("open", "{app}"))
+        self.assertEqual(settings("linux").launch_cmd, ("steam", "steam://rungameid/538030"))
+
+    def test_click_cmd_defaults_to_the_clicker_of_each_platform(self):
+        self.assertEqual(settings("darwin").click_cmd[:4], ("osascript", "-l", "JavaScript", "-e"))
+        self.assertEqual(settings("linux").click_cmd, ("xdotool", "mousemove", "{x}", "{y}", "click", "1"))
+
+
+class CommandTemplateTests(unittest.TestCase):
+    def test_substitute_replaces_tokens_and_leaves_other_braces_alone(self):
+        argv = ["a", "{x}", "function f() { g({y}); }"]
+        self.assertEqual(
+            run.substitute(argv, {"{x}": "1", "{y}": "2"}),
+            ["a", "1", "function f() { g(2); }"],
+        )
+
+    def test_launch_command_fills_in_the_app_path(self):
+        s = settings("darwin", {"LAUNCHER_APP": "/A/Xenonauts 2.app"})
+        self.assertEqual(run.launch_command(s), ["open", "/A/Xenonauts 2.app"])
+
+    def test_launch_command_on_linux_goes_straight_to_the_steam_app_id(self):
+        self.assertEqual(run.launch_command(settings("linux")), ["steam", "steam://rungameid/538030"])
+
+    def test_click_command_fills_in_the_coordinates(self):
+        self.assertEqual(
+            run.click_command(settings("linux"), (7, 9)),
+            ["xdotool", "mousemove", "7", "9", "click", "1"],
+        )
+
+    def test_click_command_keeps_the_jxa_body_intact(self):
+        argv = run.click_command(settings("darwin"), (7, 9))
+        self.assertEqual(argv[:4], ["osascript", "-l", "JavaScript", "-e"])
+        self.assertIn("click(7, 9);", argv[-1])
+        self.assertIn("function post(type, x, y) {", argv[-1])
+
+    def test_a_platform_without_a_launcher_app_passes_the_launcher_check(self):
+        self.assertIsNone(run.launcher_app_problem(settings("linux")))
+
+    def test_a_configured_launcher_app_must_exist(self):
+        problem = run.launcher_app_problem(settings("darwin", {"LAUNCHER_APP": "/nope/Xenonauts 2.app"}))
+        self.assertIn("/nope/Xenonauts 2.app", problem)
+
+    def test_launch_cmd_override_is_split_like_a_shell_command(self):
+        s = settings("linux", {"LAUNCH_CMD": "flatpak run com.valvesoftware.Steam 'steam://rungameid/1'"})
+        self.assertEqual(run.launch_command(s), ["flatpak", "run", "com.valvesoftware.Steam", "steam://rungameid/1"])
+
+
 class ParsePointTests(unittest.TestCase):
     def test_parses_x_comma_y(self):
         self.assertEqual(run.parse_point("1331,1302"), (1331, 1302))
@@ -290,9 +400,8 @@ class ParsePointTests(unittest.TestCase):
 
     def test_rejects_bad_input(self):
         for bad in ["", "1", "1,2,3", "a,b"]:
-            with self.subTest(bad=bad):
-                with self.assertRaises(ValueError):
-                    run.parse_point(bad)
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                run.parse_point(bad)
 
 
 class AutoLoadTextTests(unittest.TestCase):
@@ -308,9 +417,8 @@ class RunNameTests(unittest.TestCase):
 
     def test_rejects_names_that_escape_the_logs_folder(self):
         for bad in ["", ".", "..", "a/b", "../x", "a b"]:
-            with self.subTest(bad=bad):
-                with self.assertRaises(ValueError):
-                    run.validate_run_name(bad)
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                run.validate_run_name(bad)
 
 
 class SnapshotTests(unittest.TestCase):

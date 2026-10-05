@@ -1,0 +1,13 @@
+{
+	"version": "0.0.1",
+	"asset": {
+		"Name": "X2 Load Profiler",
+		"UID": "3d838dc2-e6cf-43f4-ad2c-9ca6dfbd3367",
+		"Description": "Measures content-loading cost during save loads.",
+		"Author": "pythoninthegrass",
+		"Tags": ["Utility", "Debug"],
+		"Version": "0.0.1",
+		"$type": "Common.Content.DataStructures.ContentPackManifest"
+	},
+	"$type": "Common.Content.DataStructures.VersionedAsset"
+}

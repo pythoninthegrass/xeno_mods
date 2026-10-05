@@ -1,0 +1,5 @@
+bin/
+obj/
+Directory.Build.local.props
+decomp/
+tools/

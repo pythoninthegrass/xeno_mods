@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <BottleFolder>$(HOME)/Library/Application Support/CrossOver/Bottles/Steam/drive_c</BottleFolder>
+    <GameFolder>$(BottleFolder)/Program Files (x86)/Steam/steamapps/common/Xenonauts2/Xenonauts2_Data/Managed</GameFolder>
+    <CacheFolder>$(GameFolder)</CacheFolder>
+    <ModInstanceFolder>$(BottleFolder)/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/Mods/x2_load_profiler</ModInstanceFolder>
+  </PropertyGroup>
+  <!-- Untracked per-machine overrides for the paths above -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.local.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.local.props')" />
+</Project>

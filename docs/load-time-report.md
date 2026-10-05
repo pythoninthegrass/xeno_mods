@@ -179,3 +179,40 @@ Four launches on 2026-10-05, each a menu-loaded cold load plus two in-session re
 | Warm queue to playable | 35.12 s | 32.27 s | -2.85 s (-8%) | 34.36 s | 31.16 s | -3.20 s (-9%) |
 
 The TASK-006 gain still holds at the shipping level and is somewhat larger in seconds (3.0 to 4.9 s against 2.2 to 2.9 s). Mod-off intro to setup is about 1.5 s longer than at DEBUG, so lighter logging did not make the gap shorter. Possible causes are the timing mod's own hooks (they are in both arms) and a busy host: a smoke run taken while the display was asleep and the machine was in use measured 29.7 s intro to setup, which is why every run here keeps the display awake with `caffeinate -d`. Each cell is the mean of 2 cold or 4 warm loads, so a difference under about 0.5 s should not be read as real.
+
+## Audit of the bundle loads (TASK-010.06)
+
+Capture: one launch (run60-capture, mod on, `bundle_log.txt` present in the mod folder so `x2_load_profiler` records every `AssetBundleFileLoadOperation` and every `ContentManager.InternalUnload` call), a menu-loaded cold load and one in-session warm reload of the baseline save. Raw slices are in `docs/diagnosis/`: `run60-startup-bundle-loads.tsv` (main menu startup), `run60-cold-bundle-loads.tsv`, `run60-warm1-bundle-loads.tsv`, the matching `run60-*-reloaded-after-release.txt` name lists and `run60-markers.txt`. Columns of `L` lines: sequence, completion time, request-to-start ms, start-to-done ms, asset type, relative path, bundle name, content pack, parent (always `-`, see below). `U` lines are unloads. `scripts/analyze_bundles.py` produces the slices and the tables below. Capture timings are not used for any speed claim.
+
+What the numbers mean:
+
+- The "8808 loads per ground combat load" in the earlier sections is the whole session up to the playable point: 2609 loads at main menu startup plus 6199 for the load itself. 5497 of those 6199 finish before `Handling Setup` (the pre-setup gap) and 702 after it. A warm reload makes the same 6199.
+- Each record is a single asset read from an already resident bundle (`AssetBundle.LoadAssetAsync(relativePath)`), not a bundle file, so there is no per-load file size. The bundle name is recorded and the asset type stands in for the task type.
+- The engine's `LoadTask` has a `parent` argument that no caller sets, so the requester of a load cannot be recovered from the engine. The path (`<kind>/<scope>/...`, scope being `strategy`, `groundcombat` or `common`) is the classification used instead.
+- Estimated seconds divide the window's active span (first request to last completion, 19.9 s before setup in the cold load) by each class's share of loads. The summed load time column adds the start-to-done latency of every load and is far larger because about 100 loads are in flight at once; use it for relative cost, not wall time.
+
+Classes in the cold load, before setup (5497 loads, 19.9 s of activity):
+
+| Class | Loads | Est. seconds | Summed load time |
+|---|---|---|---|
+| Strategy scope (templates 892, textures 459, data 398, audio 60, prefabs 31, ui 24) | 1864 (34%) | 6.7 s | 2310 s |
+| Common scope | 1146 (21%) | 4.1 s | 819 s |
+| Ground combat scope | 2487 (45%) | 9.1 s | 803 s |
+| Released at load start and loaded again (all scopes) | 2574 (47%) | 19.8 s by share, 9.3 s by count | 2948 s (75% of the total) |
+| Strategy scope that is not a reload | 481 | 1.7 s | not split out |
+| Loaded more than once inside the same window | 0 | 0 | 0 |
+| Loaded, then released again inside the same window | 0 | 0 | 0 |
+
+(The 19.8 s in the reloaded row is the estimate the script prints for the filtered set, which re-spreads those loads over their own span. By count they are 47% of the 19.9 s, about 9.3 s.)
+
+Findings:
+
+1. **Release-then-reload churn is the main avoidable cost.** The main menu loads 2609 assets at startup. When the save load starts, the load screen unloads 2644 assets (2640 distinct) and then loads 2574 of the same paths again within seconds. All 1383 reloaded strategy-scope assets, 610 common templates and 261 maps are in that set. They hold 75% of the summed load time before setup because the strategy templates and textures are the slowest classes. In the warm reload it is total: 6243 unloads, then 6199 loads, every one of them a path that was released earlier in the window.
+2. **Strategy-scope content is 34% of the pre-setup loads.** 1383 of the 1864 are the reloads above. 481 are first loads in this process (360 strategy templates among them). The load screen requests all of them from its manifest, so they are not stray loads, but nothing in the capture shows ground combat reading them.
+3. **No duplicates and no load-then-release inside one window.** Every path loads exactly once per window. The duplicates are across windows (startup, cold, warm), listed by name in the `*-reloaded-after-release.txt` files: 2574 names for the cold load and 6199 for the warm one.
+
+What a mod could do, and the evidence:
+
+- **Skip the unload of assets the target load will request again (candidate for TASK-010.07).** Evidence it is safe: the same descriptors are loaded again moments after the unload, so the resulting resident assets are the same content; the capture shows no path loaded twice in a window, so there is no case where the second copy differs. Evidence still missing: whether any loaded asset keeps mutable state or post-load processing results that the unload/reload resets (templates are the largest class, 1097 + 892 + 645). The 010.07 experiment has to show an identical error count (5 per load), identical state-loss counts and an identical post-load save before it ships. Upper bound if the whole set were skipped: 2574 of 5497 pre-setup loads, a larger share of the summed load time (75%) than the share of wall time because those loads are the slow ones.
+- **Defer or skip the 481 strategy-scope first loads.** Not supported by the evidence yet. They are requested by the load screen manifest and the capture cannot show whether ground combat ever reads them. Skipping them without a usage trace risks a missing-asset error at the first access, so this needs a read-tracking experiment first.
+- **Nothing to remove as duplicate or load-then-release work** inside a single load: both counts are zero.

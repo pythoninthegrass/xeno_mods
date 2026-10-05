@@ -32,6 +32,10 @@
       <HintPath>$(GameFolder)/UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(GameFolder)/UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Install the manifest, DLL and PDB into the game's local mod folder after every build -->

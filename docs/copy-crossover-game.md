@@ -18,7 +18,7 @@ The third path holds the mods and saves. Skip it to start the target with a clea
 
 - Steam is installed in the target bottle and has been logged into once, so `steamapps` exists.
 - Steam and CrossOver are closed on both machines.
-- Steam Cloud is disabled for Xenonauts 2, or the first launch shows an "Unable to Sync" dialog (see [automated-runs.md](automated-runs.md)).
+- Steam Cloud is disabled for Xenonauts 2 on the target machine (Steam library, right-click the game, Properties, General, uncheck "Keep game saves in the Steam Cloud"). With it on, the first launch on the target exits after about 30 seconds (see [automated-runs.md](automated-runs.md) for the "Unable to Sync" dialog).
 - `rsync` 3.x is installed on the machine you copy from. The `rsync` bundled with macOS (`openrsync`) does not handle remote paths with spaces the same way.
 
 ## Commands

@@ -193,7 +193,7 @@ class ConfigTests(unittest.TestCase):
             s = run.load_settings(Path(d), env={"LOAD_TIMEOUT_S": "5"})
         self.assertEqual(s.load_timeout_s, 5)
         self.assertEqual(s.launch_timeout_s, 8)
-        self.assertEqual(s.quit_grace_s, 15)
+        self.assertEqual(s.quit_grace, 15)
 
     def test_naming_and_marker_settings_have_defaults_and_can_be_overridden(self):
         with tempfile.TemporaryDirectory() as d:
@@ -214,7 +214,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(s.mod_name, "x2_load_profiler")
         self.assertEqual(s.game_process_pattern, "[X]enonauts2.exe")
         self.assertEqual(s.steam_process_pattern, "[s]team.exe")
-        self.assertEqual(s.poll_interval_s, 0.5)
+        self.assertEqual(s.poll_interval, 0.5)
         self.assertEqual(o.leftover_archive_prefix, "old-")
         self.assertEqual(o.state_loss_pattern, "boom")
         self.assertEqual(o.playable_marker, "ready")

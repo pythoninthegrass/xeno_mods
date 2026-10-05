@@ -114,8 +114,8 @@ class Settings:
     menu_ready_marker: str
     game_process_pattern: str
     steam_process_pattern: str
-    quit_grace_s: int
-    poll_interval_s: float
+    quit_grace: int
+    poll_interval: float
 
     @property
     def logs_dir(self) -> Path:
@@ -318,8 +318,8 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None) -> Settings:
         steam_process_pattern=config(
             "STEAM_PROCESS_PATTERN", default=DEFAULT_STEAM_PROCESS_PATTERN
         ),
-        quit_grace_s=config("QUIT_GRACE_S", default=15, cast=int),
-        poll_interval_s=config("POLL_INTERVAL_S", default=0.5, cast=float),
+        quit_grace=config("QUIT_GRACE", default=15, cast=int),
+        poll_interval=config("POLL_INTERVAL", default=0.5, cast=float),
     )
 
 
@@ -331,13 +331,13 @@ def game_pids(s: Settings) -> list[int]:
 
 
 def wait_until(
-    predicate: Callable[[], bool], timeout_s: float, poll_interval_s: float
+    predicate: Callable[[], bool], timeout_s: float, poll_interval: float
 ) -> bool:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         if predicate():
             return True
-        time.sleep(poll_interval_s)
+        time.sleep(poll_interval)
     return predicate()
 
 
@@ -347,9 +347,9 @@ def stop_game(s: Settings) -> None:
     if gone():
         return
     subprocess.run(["pkill", "-TERM", "-f", s.game_process_pattern])
-    if not wait_until(gone, s.quit_grace_s, s.poll_interval_s):
+    if not wait_until(gone, s.quit_grace, s.poll_interval):
         subprocess.run(["pkill", "-KILL", "-f", s.game_process_pattern])
-        if not wait_until(gone, 5, s.poll_interval_s):
+        if not wait_until(gone, 5, s.poll_interval):
             raise RunError("the game process would not exit")
 
 
@@ -391,7 +391,7 @@ def wait_for_log(
     s: Settings, predicate: Callable[[list[Entry]], bool], timeout_s: float
 ) -> bool:
     return wait_until(
-        lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval_s
+        lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval
     )
 
 
@@ -441,9 +441,7 @@ def perform_run(s: Settings, run_name: str, load: str) -> Timings:
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
     print(f"launching {s.launcher_app.name} (load={load})")
     subprocess.run(["open", str(s.launcher_app)], check=True)
-    if not wait_until(
-        lambda: bool(game_pids(s)), s.launch_timeout_s, s.poll_interval_s
-    ):
+    if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout_s, s.poll_interval):
         raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout_s} s")
     if load == "menu":
         menu_load(s)

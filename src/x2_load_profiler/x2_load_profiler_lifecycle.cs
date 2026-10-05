@@ -16,6 +16,7 @@ namespace X2LoadProfiler {
         private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);
 
         public void Create(Mod mod, Harmony patcher) {
+            patcher.CreateClassProcessor(typeof(UpdateTasksPatch)).Patch();
             Log.Warn("[X2LoadProfiler] Loaded");
         }
 

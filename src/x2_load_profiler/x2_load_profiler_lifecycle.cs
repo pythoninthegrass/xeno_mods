@@ -19,8 +19,11 @@ namespace X2LoadProfiler {
 
         private const string ExperimentFileName = "unity_experiment.txt";
 
+        private const string AutoLoadFileName = "auto_load.txt";
+
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
+            AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
             try {
                 ApplyExperiment(mod);
             } catch (Exception e) {

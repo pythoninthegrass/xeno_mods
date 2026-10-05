@@ -81,3 +81,37 @@ Profiler totals over the pre-setup gap (about 20 per-second lines each):
 | Worst wall time per frame | 32 ms | 34 ms |
 
 Both runs loaded the `auto/` autosave directly. The copy `Saves/ellz_1bf479e6/user_baseline_turn10-3.json` has the same hash and was not used. Raw logs were archived outside the repo under `Logs/run1-baseline` and `Logs/run2-baseline` in the game's user data folder.
+
+## Diagnosis of the pre-setup gap
+
+Finding: the gap is case 2/3 hybrid dominated by per-bundle start-to-done latency under a saturated 25-wide cap, not by `UpdateTasks` polling. Unity services bundle loads at a roughly fixed rate, so queued loads wait. Raising the cap shortens the gap only partly because per-load latency grows with the number in flight.
+
+Runs 3 to 5 (menu-loaded, `x2_load_profiler` extended with bundle counters, raw lines in `docs/diagnosis/run3-profiler.txt` to `run5-profiler.txt`) show the same deterministic load every time: 5497 bundle loads in the gap, `bundleInFlight` exactly 25 in every second, about 2600 blocked `CanStart` polls per frame in the plateau.
+
+| | Run 3 (default) | Run 4 (default) | Run 5 (`backgroundLoadingPriority=High`) |
+|---|---|---|---|
+| LoseFocus to Setup | 21.2 s | 20.2 s | 19.8 s |
+| Plateau bundle loads / mean start-to-done | 911 / 362 ms | 911 / 361 ms | 914 / 360 ms |
+| Burst bundle loads / mean start-to-done | 2734 / 50 ms | 2734 / 51 ms | 2732 / 52 ms |
+
+Throughput follows Little's law with the cap as concurrency: about 35 completions per second while loads take 0.4 to 1.0 s (plateau, about 13 s, `UpdateTasks` 3.8% of wall time in runs 1 and 2) and 500 to 900 per second while they take 20 to 80 ms (burst, about 5 s, 5.8% in runs 1 and 2). Case 1 (per-frame polling) is ruled out. `backgroundLoadingPriority=High` changed nothing, so that Unity-side hypothesis is falsified.
+
+Runs 8 and 9 use the automated auto-load route (`scripts/run.py`), the same save, 5 `[ERROR]` lines and 20 state-loss matches each, raw lines in `docs/diagnosis/run8-profiler.txt` and `run9-profiler.txt`. Only one variable differs.
+
+| | Run 8 (cap 25) | Run 9 (cap 200) |
+|---|---|---|
+| Intro to setup | 23.60 s | 19.80 s |
+| Queue to playable | 44.39 s | 40.85 s |
+| Total bundle loads | 8808 | 8808 |
+| Seconds with loads completing | 45 | 29 |
+| Loads per active second | 196 | 304 |
+| Max in flight | 25 | 200 |
+| Mean start-to-done (load weighted) | 132 ms | 874 ms |
+| Max start-to-done | 2257 ms | 7283 ms |
+| Loads taking 500 ms or more | 723 | 3111 |
+
+Eight times the concurrency gives 1.55 times the throughput and 6.6 times the per-load latency. Unity serializes most of the work behind the loads, so latency scales with queue depth and the cap alone is a weak lever, consistent with the earlier 2 to 3 s result. The 3.8 s gain is well above the 0.5 s noise margin of auto-load runs. Cap 200 is a single run and should be repeated before it is relied on.
+
+In run 8 the 723 loads of 500 ms or more are not one asset: 247 strategy textures, 147 strategy templates, 108 common templates, 53 groundcombat templates, 38 groundcombat prefabs, 26 common UI prefabs. No single bundle or type explains the plateau.
+
+The remaining cost after the gap (about 20 s from setup to playable) and the hitches at about +30, +35 and +38 s after the load command are outside this finding. `asyncUploadTimeSlice` and `asyncUploadBufferSize` were not tested.

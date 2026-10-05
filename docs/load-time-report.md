@@ -132,4 +132,28 @@ All four runs below are cold, menu-loaded through `scripts/run.py --load menu`, 
 | Mean, off | | 22.54 s | 42.06 s |
 | Difference | | -2.46 s (-11%) | -2.18 s (-5%) |
 
-The earlier baselines (21.3 s LoseFocus-to-setup gap, 42 to 43 s total) agree with the mod-off arm. The gain is about 2.2 to 2.5 s, smaller than the 3.8 s seen between runs 8 and 9 because those two used different intro anchors and a single sample each. Warm loads (a second load in the same session) were not measured, since `scripts/run.py` performs one cold load per launch.
+The earlier baselines (21.3 s LoseFocus-to-setup gap, 42 to 43 s total) agree with the mod-off arm. The gain is about 2.2 to 2.5 s, smaller than the 3.8 s seen between runs 8 and 9 because those two used different intro anchors and a single sample each.
+
+### Warm loads
+
+Four more launches with `scripts/run.py --load menu --warm-loads 2`: each launch is one cold menu load followed by two in-session reloads of the same baseline save through the in-game menu (no restart), same settings as above. Every launch has 15 `[ERROR]` lines (5 per load) and 60 state-loss matches (20 per load), identical to the single-load runs. Mod off runs come first, then mod on.
+
+| Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
+|---|---|---|---|---|---|
+| run20-off-warm | mod off | 22.66 s | 42.49 s | 23.38, 23.37 s | 35.17, 35.13 s |
+| run21-off-warm | mod off | 22.66 s | 41.67 s | 23.34, 23.35 s | 34.79, 35.37 s |
+| run22-on-warm | mod on | 20.54 s | 39.71 s | 20.78, 20.72 s | 32.15, 33.13 s |
+| run23-on-warm | mod on | 20.49 s | 40.07 s | 20.90, 20.47 s | 32.13, 31.68 s |
+
+| | Mod off | Mod on | Difference |
+|---|---|---|---|
+| Cold intro to setup (runs 11 to 14, 20 to 23, mean of 4) | 22.60 s | 20.30 s | -2.30 s (-10%) |
+| Cold queue to playable (mean of 4) | 42.07 s | 39.89 s | -2.18 s (-5%) |
+| Warm intro to setup (mean of 4) | 23.36 s | 20.72 s | -2.64 s (-11%) |
+| Warm queue to playable (mean of 4) | 35.12 s | 32.27 s | -2.85 s (-8%) |
+
+The pre-setup gap does not shrink on warm loads with the mod on or off (it grows by 0.4 s with the mod on and 0.8 s off), which matches the earlier 21.4 s cold and 22.4 s warm finding. Warm loads are faster only after setup. The mod removes about 2.3 to 2.6 s of the gap in every condition, about 11%. That leaves roughly 20.5 s of the original 19 to 22 s gap, so the fix is a measured but small gain, not the large reduction the plan hoped for. Runs 20 to 23 use the baseline save for the warm reloads: a save made in-game with the mod on raises a "Missing Content" confirmation when loaded with the mod off.
+
+### Save made after the load
+
+With the mod on, a save made in-game after the load (`user_task006_verify-4.json`, 2.2 MB) was reloaded in the same session: the game reached `BlockOnLocalPlayerTurn` in 33.3 s with the same squad, objectives and 5 `[ERROR]` and 20 state-loss lines as the first load.

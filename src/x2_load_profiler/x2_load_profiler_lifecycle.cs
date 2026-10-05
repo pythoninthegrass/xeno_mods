@@ -21,15 +21,25 @@ namespace X2LoadProfiler {
 
         private const string AutoLoadFileName = "auto_load.txt";
 
+        private const string BundleCapFileName = "bundle_cap.txt";
+
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
             AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
+            ApplyBundleCap(mod);
             try {
                 ApplyExperiment(mod);
             } catch (Exception e) {
                 Log.Warn($"[X2LoadProfiler] Experiment failed: {e}");
             }
             Log.Warn($"[X2LoadProfiler] UnitySettings backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}");
+        }
+
+        private static void ApplyBundleCap(Mod mod) {
+            string path = Path.Combine(mod.ContentPack, BundleCapFileName);
+            string? text = File.Exists(path) ? File.ReadAllText(path) : null;
+            BundleConcurrencyConfig.ModCap = BundleConcurrency.ParseCap(text, BundleConcurrency.DefaultCap);
+            Log.Warn($"[X2LoadProfiler] BundleCap={BundleConcurrencyConfig.ModCap} source={(text == null ? "default" : path)}");
         }
 
         private static void ApplyExperiment(Mod mod) {

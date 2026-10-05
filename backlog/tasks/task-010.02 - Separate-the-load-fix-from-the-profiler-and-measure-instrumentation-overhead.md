@@ -1,9 +1,11 @@
 ---
 id: TASK-010.02
 title: Separate the load fix from the profiler and measure instrumentation overhead
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-10-05 15:30'
+updated_date: '2026-10-05 23:09'
 labels:
   - load-time
 dependencies: []
@@ -25,3 +27,13 @@ Read parent TASK-010 first. The shipped fix (bundle cap patch) lives in the same
 - [ ] #3 The overhead of the profiler patches is reported in docs/load-time-report.md
 - [ ] #4 The decision on one mod versus two is documented
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Tests first: ProfilerSwitch.Parse(string?) defaulting to off (missing file, true/false, whitespace, garbage -> off); confirm failing.
+2. Implement ProfilerSwitch; read profiler.txt in the lifecycle Create; gate UpdateTasksPatch, BundleCanStartPatch, BundleStartPatch, BundleUpdatePatch with [HarmonyPrepare]. Fix patch and AutoLoad untouched.
+3. Measure neither / fix only / fix plus profiler: scripts/run.py --load menu --warm-loads 2, 2 launches each (2 cold + 4 warm), shipping log4net, timing mod on, caffeinate -d, same baseline save, errors 5 per load.
+4. Report profiler overhead and the one-mod-versus-two decision in docs/load-time-report.md (recommendation: one mod with opt-in switch unless overhead is large); document the flag in docs/automated-runs.md.
+5. Conventional commits, no attribution.
+<!-- SECTION:PLAN:END -->

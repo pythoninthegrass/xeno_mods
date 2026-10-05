@@ -423,6 +423,12 @@ def click(point: tuple[int, int]) -> None:
     subprocess.run(["osascript", "-l", "JavaScript", "-e", JXA_CLICK % point], check=True)
 
 
+def bring_game_to_front() -> None:
+    """Menu clicks land on whatever window is frontmost, so raise the game first."""
+    script = 'tell application "System Events" to set frontmost of (first process whose name contains "Xenonauts") to true'
+    subprocess.run(["osascript", "-e", script], check=True)
+
+
 def menu_load(s: Settings) -> None:
     if not wait_for_log(
         s,
@@ -431,6 +437,7 @@ def menu_load(s: Settings) -> None:
     ):
         raise RunError(f"main menu was not ready within {s.launch_timeout} s of launch")
     time.sleep(1)
+    bring_game_to_front()
     for point in (s.menu_load_game, s.menu_save_row, s.menu_load_save):
         click(point)
         time.sleep(1.5)
@@ -444,6 +451,7 @@ def warm_load(s: Settings) -> None:
     """Reload the baseline save through the in-game menu; the row is positional like the main menu one."""
     before = count_playable(s)
     time.sleep(2)
+    bring_game_to_front()
     for point in (
         s.game_menu_button,
         s.game_menu_load_game,

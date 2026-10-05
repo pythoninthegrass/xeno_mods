@@ -55,9 +55,21 @@ namespace X2LoadProfiler {
 
             long latencyTicks = Stopwatch.GetTimestamp() - startTicks;
             BundleLoadTracker.Stats.RecordDone(latencyTicks);
+            if (BundleCapture.Enabled) {
+                RecordCapture(__instance, ____descriptor, startTicks, latencyTicks);
+            }
             if (BundleLoadTracker.Stats.IsSlow(latencyTicks)) {
                 Log.Warn($"[X2LoadProfiler] SlowBundle ms={latencyTicks * 1000.0 / Stopwatch.Frequency:F0} type={____descriptor.Type?.Name} asset={____descriptor}");
             }
+        }
+
+        private static void RecordCapture(AssetBundleFileLoadOperation op, Descriptor descriptor, long startTicks, long latencyTicks) {
+            double msPerTick = 1000.0 / Stopwatch.Frequency;
+            double queueMs = BundleCapture.RequestTimes.Remove(op, out long requestTicks) ? (startTicks - requestTicks) * msPerTick : 0.0;
+            BundleCapture.Parents.Remove(descriptor, out string? parent);
+            var handle = descriptor.FileHandle;
+            BundleCapture.Add(BundleRecord.LoadLine(BundleCapture.NextSequence(), System.DateTime.Now, queueMs, latencyTicks * msPerTick,
+                descriptor.Type?.Name, handle?.RelativePath, handle?.assetBundleName, handle?.contentPackPath, parent));
         }
     }
 

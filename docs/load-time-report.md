@@ -157,3 +157,25 @@ The pre-setup gap does not shrink on warm loads with the mod on or off (it grows
 ### Save made after the load
 
 With the mod on, a save made in-game after the load (`user_task006_verify-4.json`, 2.2 MB) was reloaded in the same session: the game reached `BlockOnLocalPlayerTurn` in 33.3 s with the same squad, objectives and 5 `[ERROR]` and 20 state-loss lines as the first load.
+
+## Shipping log level (TASK-010.01)
+
+All earlier numbers were taken with `log4net.xml` at DEBUG. At the shipping configuration (root and every appender at ERROR, identical to `log4net.xml.orig`) the game drops its INFO marker lines and the profiler drops its WARN lines, so `scripts/run.py` had no timing source. The `x2_load_timing` mod now appends a timestamped line to `Mods/x2_load_timing/markers.txt` at the same five points (load command queued, load screen intro and outro complete, `Handling Setup`, `BlockOnLocalPlayerTurn`) without going through log4net, and `run.py` reads that file when it is present. The mod is enabled in both arms below. Mod off means only the `x2_load_profiler` pack (which holds the concurrency patch) is disabled.
+
+Four launches on 2026-10-05, each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), `log4net.xml` unchanged, `optimizing.json` at `{}`. Markers for each launch are in `docs/baseline/shipping/`. Every launch has 15 `[ERROR]` lines (5 per load, same as the DEBUG runs). `state-loss` matches fall from 20 to 10 per load at this level in both arms because half of those lines are INFO or DEBUG, so the check stays valid only as an on/off comparison.
+
+| Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
+|---|---|---|---|---|---|
+| run50-ship-off-warm | mod off | 24.47 s | 43.14 s | 24.25, 24.25 s | 34.37, 34.70 s |
+| run52-ship-off-warm | mod off | 24.21 s | 40.95 s | 23.83, 24.39 s | 33.85, 34.50 s |
+| run51-ship-on-warm | mod on | 21.87 s | 38.10 s | 21.01, 20.98 s | 31.04, 30.77 s |
+| run53-ship-on-warm | mod on | 19.53 s | 36.10 s | 21.57, 21.07 s | 31.65, 31.16 s |
+
+| | DEBUG, mod off | DEBUG, mod on | DEBUG gain | Shipping, mod off | Shipping, mod on | Shipping gain |
+|---|---|---|---|---|---|---|
+| Cold intro to setup | 22.60 s | 20.30 s | -2.30 s (-10%) | 24.34 s | 20.70 s | -3.64 s (-15%) |
+| Cold queue to playable | 42.07 s | 39.89 s | -2.18 s (-5%) | 42.04 s | 37.10 s | -4.94 s (-12%) |
+| Warm intro to setup | 23.36 s | 20.72 s | -2.64 s (-11%) | 24.18 s | 21.16 s | -3.02 s (-12%) |
+| Warm queue to playable | 35.12 s | 32.27 s | -2.85 s (-8%) | 34.36 s | 31.16 s | -3.20 s (-9%) |
+
+The TASK-006 gain still holds at the shipping level and is somewhat larger in seconds (3.0 to 4.9 s against 2.2 to 2.9 s). Mod-off intro to setup is about 1.5 s longer than at DEBUG, so lighter logging did not make the gap shorter. Possible causes are the timing mod's own hooks (they are in both arms) and a busy host: a smoke run taken while the display was asleep and the machine was in use measured 29.7 s intro to setup, which is why every run here keeps the display awake with `caffeinate -d`. Each cell is the mean of 2 cold or 4 warm loads, so a difference under about 0.5 s should not be read as real.

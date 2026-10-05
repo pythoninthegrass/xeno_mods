@@ -21,12 +21,20 @@ namespace X2LoadProfiler {
 
         private const string AutoLoadFileName = "auto_load.txt";
 
+        private const string BundleCaptureFlagFileName = "bundle_log.txt";
+
+        private const string BundleCaptureOutputFileName = "bundle_loads.tsv";
+
         private const string BundleCapFileName = "bundle_cap.txt";
 
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
             AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
             ApplyBundleCap(mod);
+            string captureFlag = Path.Combine(mod.ContentPack, BundleCaptureFlagFileName);
+            if (File.Exists(captureFlag)) {
+                BundleCapture.Enable(Path.Combine(mod.ContentPack, BundleCaptureOutputFileName));
+            }
             try {
                 ApplyExperiment(mod);
             } catch (Exception e) {

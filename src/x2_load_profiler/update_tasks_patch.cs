@@ -22,6 +22,7 @@ namespace X2LoadProfiler {
 
         [HarmonyPostfix]
         public static void Postfix(Bag<IAssetTask> ____processingTasks, Bag<IAssetTask> ____pendingTasks) {
+            BundleCapture.Flush();
             if (!Stats.EndFrame(Stopwatch.GetTimestamp(), ____processingTasks.Count, ____pendingTasks.Count)) {
                 return;
             }

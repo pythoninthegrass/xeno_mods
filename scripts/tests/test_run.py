@@ -20,7 +20,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import run  # noqa: E402
 
 SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
-SAVE_ABS = f"C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/{SAVE_REL}"
+SAVE_ABS = (
+    f"C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/{SAVE_REL}"
+)
 
 
 def entry(ts: str, message: str, level: str = "INFO") -> str:
@@ -29,12 +31,21 @@ def entry(ts: str, message: str, level: str = "INFO") -> str:
 
 
 LOG = (
-    entry("2026-10-05 01:24:19,495", f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FD[UNRESOLVED]>FileSystem::{SAVE_ABS})")
+    entry(
+        "2026-10-05 01:24:19,495",
+        f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FD[UNRESOLVED]>FileSystem::{SAVE_ABS})",
+    )
     + entry("2026-10-05 01:24:20,081", "Xenonauts.XenonautsLoadScreen: Intro Complete")
-    + entry("2026-10-05 01:24:22,000", "LoadingWorld - Handled LoseFocusScreenReport: LifecycleEvent (Type: LoseFocus)")
+    + entry(
+        "2026-10-05 01:24:22,000",
+        "LoadingWorld - Handled LoseFocusScreenReport: LifecycleEvent (Type: LoseFocus)",
+    )
     + entry("2026-10-05 01:24:42,713", "LoadScreen, Handling Setup for GroundCombat")
     + entry("2026-10-05 01:24:50,899", "something failed", level="ERROR")
-    + entry("2026-10-05 01:25:03,108", "GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]")
+    + entry(
+        "2026-10-05 01:25:03,108",
+        "GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]",
+    )
 )
 
 
@@ -42,7 +53,9 @@ class ParseEntriesTests(unittest.TestCase):
     def test_timestamp_comes_from_the_header_line_and_message_from_the_next(self):
         entries = run.parse_entries(LOG)
         self.assertEqual(entries[0].ts, datetime(2026, 10, 5, 1, 24, 19, 495000))
-        self.assertTrue(entries[0].message.startswith("MainMenuWorld - Queued LoadGameCommand"))
+        self.assertTrue(
+            entries[0].message.startswith("MainMenuWorld - Queued LoadGameCommand")
+        )
 
     def test_multiline_messages_are_joined(self):
         text = "2026-10-05 01:00:00,000 [INFO] [t] L (f:1) \nfirst\nsecond\n\n"
@@ -60,21 +73,36 @@ class QueuedSaveTests(unittest.TestCase):
         self.assertEqual(run.queued_save_path(run.parse_entries(LOG)), SAVE_ABS)
 
     def test_extracts_path_from_resolved_descriptor(self):
-        text = entry("2026-10-05 01:16:35,228", f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::{SAVE_ABS})")
+        text = entry(
+            "2026-10-05 01:16:35,228",
+            f"MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::{SAVE_ABS})",
+        )
         self.assertEqual(run.queued_save_path(run.parse_entries(text)), SAVE_ABS)
 
     def test_none_when_nothing_was_queued(self):
-        self.assertIsNone(run.queued_save_path(run.parse_entries(entry("2026-10-05 01:00:00,000", "hello"))))
+        self.assertIsNone(
+            run.queued_save_path(
+                run.parse_entries(entry("2026-10-05 01:00:00,000", "hello"))
+            )
+        )
 
     def test_first_queued_command_wins(self):
-        text = entry("2026-10-05 01:00:00,000", "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/first.json)") + entry(
-            "2026-10-05 01:00:01,000", "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/second.json)"
+        text = entry(
+            "2026-10-05 01:00:00,000",
+            "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/first.json)",
+        ) + entry(
+            "2026-10-05 01:00:01,000",
+            "MainMenuWorld - Queued LoadGameCommand: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/a/second.json)",
         )
-        self.assertEqual(run.queued_save_path(run.parse_entries(text)), "C:/a/first.json")
+        self.assertEqual(
+            run.queued_save_path(run.parse_entries(text)), "C:/a/first.json"
+        )
 
     def test_is_expected_save_matches_on_the_relative_path(self):
         self.assertTrue(run.is_expected_save(SAVE_ABS, SAVE_REL))
-        self.assertFalse(run.is_expected_save(SAVE_ABS.replace("turn_10", "turn_2"), SAVE_REL))
+        self.assertFalse(
+            run.is_expected_save(SAVE_ABS.replace("turn_10", "turn_2"), SAVE_REL)
+        )
         self.assertFalse(run.is_expected_save(None, SAVE_REL))
 
     def test_is_expected_save_accepts_backslash_paths(self):
@@ -103,12 +131,19 @@ class TimingsTests(unittest.TestCase):
         self.assertIsNotNone(t.intro_to_setup)
 
     def test_nothing_is_reported_before_the_queue(self):
-        text = entry("2026-10-05 01:00:00,000", "LoadScreen, Handling Setup for GroundCombat") + LOG
+        text = (
+            entry(
+                "2026-10-05 01:00:00,000", "LoadScreen, Handling Setup for GroundCombat"
+            )
+            + LOG
+        )
         t = run.find_timings(run.parse_entries(text))
         self.assertEqual(t.setup, datetime(2026, 10, 5, 1, 24, 42, 713000))
 
     def test_intro_complete_after_setup_is_not_the_anchor(self):
-        text = LOG + entry("2026-10-05 01:25:02,097", "Xenonauts.XenonautsLoadScreen: Intro Complete")
+        text = LOG + entry(
+            "2026-10-05 01:25:02,097", "Xenonauts.XenonautsLoadScreen: Intro Complete"
+        )
         t = run.find_timings(run.parse_entries(text))
         self.assertAlmostEqual(t.intro_to_setup, 22.632, places=3)
 
@@ -123,7 +158,9 @@ class CountErrorsTests(unittest.TestCase):
         self.assertEqual(run.count_errors(LOG), 1)
 
     def test_ignores_error_text_inside_messages(self):
-        self.assertEqual(run.count_errors(entry("2026-10-05 01:00:00,000", "the [ERROR] word")), 0)
+        self.assertEqual(
+            run.count_errors(entry("2026-10-05 01:00:00,000", "the [ERROR] word")), 0
+        )
 
 
 class ConfigTests(unittest.TestCase):
@@ -149,8 +186,15 @@ class ConfigTests(unittest.TestCase):
     def test_bottle_setting_moves_the_derived_paths(self):
         with tempfile.TemporaryDirectory() as d:
             s = run.load_settings(Path(d), env={"BOTTLE": "/b"})
-        self.assertEqual(s.game_dir, Path("/b/Program Files (x86)/Steam/steamapps/common/Xenonauts2"))
-        self.assertEqual(s.data_dir, Path("/b/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"))
+        self.assertEqual(
+            s.game_dir, Path("/b/Program Files (x86)/Steam/steamapps/common/Xenonauts2")
+        )
+        self.assertEqual(
+            s.data_dir,
+            Path(
+                "/b/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"
+            ),
+        )
 
     def test_menu_points_default_to_the_spike_coordinates(self):
         with tempfile.TemporaryDirectory() as d:

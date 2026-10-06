@@ -10,8 +10,10 @@
 Hermetic: no game, no Steam, no desktop automation.
 """
 
+import getpass
 import sys
 import tempfile
+import time
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -391,6 +393,151 @@ class CommandTemplateTests(unittest.TestCase):
     def test_launch_cmd_override_is_split_like_a_shell_command(self):
         s = settings("linux", {"LAUNCH_CMD": "flatpak run com.valvesoftware.Steam 'steam://rungameid/1'"})
         self.assertEqual(run.launch_command(s), ["flatpak", "run", "com.valvesoftware.Steam", "steam://rungameid/1"])
+
+
+GOG_WINEPREFIX = "WINEPREFIX=/run/user/1000/doc/5cf27610/gog/Xenonauts 2/prefix"
+
+
+class BuildTests(unittest.TestCase):
+    def test_build_defaults_to_steam(self):
+        self.assertEqual(settings("linux").build, "steam")
+        self.assertEqual(settings("darwin").build, "steam")
+
+    def test_an_unknown_build_is_rejected(self):
+        with self.assertRaises(ValueError):
+            settings("linux", {"BUILD": "epic"})
+
+    def test_the_gog_build_is_linux_only(self):
+        with self.assertRaises(ValueError):
+            settings("darwin", {"BUILD": "gog"})
+
+    def test_steam_defaults_are_the_same_with_the_build_set_explicitly(self):
+        for platform in ("linux", "darwin"):
+            self.assertEqual(settings(platform, {"BUILD": "steam"}), settings(platform))
+
+    def test_gog_defaults_point_at_the_minigalaxy_install(self):
+        s = settings("linux", {"BUILD": "gog"})
+        self.assertEqual(s.bottle, Path("/media/gog/Xenonauts 2/prefix/drive_c"))
+        self.assertEqual(s.game_dir, Path("/media/gog/Xenonauts 2"))
+        self.assertEqual(s.wine_user, getpass.getuser())
+        self.assertEqual(
+            s.data_dir,
+            Path(
+                f"/media/gog/Xenonauts 2/prefix/drive_c/users/{getpass.getuser()}/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"
+            ),
+        )
+
+    def test_gog_save_path_uses_the_login_name(self):
+        s = settings("linux", {"BUILD": "gog"})
+        self.assertTrue(s.save_abs.startswith(f"C:/users/{getpass.getuser()}/AppData/"))
+
+    def test_gog_has_no_steam_client_settings(self):
+        s = settings("linux", {"BUILD": "gog"})
+        self.assertIsNone(s.steam_console_log)
+        self.assertEqual(s.steam_process_pattern, "")
+
+    def test_gog_launches_through_the_minigalaxy_wine(self):
+        argv = run.launch_command(settings("linux", {"BUILD": "gog"}))
+        self.assertEqual(argv[:4], ["flatpak", "run", "--command=env", "io.github.sharkwouter.Minigalaxy"])
+        self.assertIn(GOG_WINEPREFIX, argv)
+        self.assertEqual(argv[-5:], ["/app/bin/wine", "start", "/d", "c:\\game", "c:\\game\\Xenonauts2.exe"])
+
+    def test_gog_values_can_be_overridden(self):
+        s = settings("linux", {"BUILD": "gog", "GOG_WINE_USER": "bob", "GOG_GAME_DIR": "/g", "GOG_LAUNCH_CMD": "true"})
+        self.assertEqual(s.wine_user, "bob")
+        self.assertEqual(s.game_dir, Path("/g"))
+        self.assertEqual(run.launch_command(s), ["true"])
+
+    def test_steam_overrides_do_not_leak_into_the_gog_build(self):
+        s = settings(
+            "linux",
+            {"BUILD": "gog", "BOTTLE": "/steam", "GAME_DIR": "/steam/g", "LAUNCH_CMD": "steam x", "WINE_USER": "steamuser"},
+        )
+        self.assertEqual(s.bottle, Path("/media/gog/Xenonauts 2/prefix/drive_c"))
+        self.assertEqual(s.game_dir, Path("/media/gog/Xenonauts 2"))
+        self.assertEqual(run.launch_command(s)[0], "flatpak")
+        self.assertEqual(s.wine_user, getpass.getuser())
+
+    def test_gog_overrides_do_not_leak_into_the_steam_build(self):
+        s = settings("linux", {"GOG_BOTTLE": "/gog", "GOG_LAUNCH_CMD": "true"})
+        self.assertEqual(run.launch_command(s), ["steam", "steam://rungameid/538030"])
+
+    def test_gog_shares_the_generic_settings(self):
+        s = settings("linux", {"BUILD": "gog", "LOAD_TIMEOUT": "9", "MENU_LOAD_GAME": "1,2"})
+        self.assertEqual((s.load_timeout, s.menu_load_game), (9, (1, 2)))
+
+    def test_gog_preflight_needs_no_steam(self):
+        s = settings("linux", {"BUILD": "gog", "GOG_STEAM_PROCESS_PATTERN": "[n]o-such-process-xyz"})
+        self.assertFalse(run.needs_steam(s))
+        run.preflight(s)
+
+    def test_steam_preflight_still_needs_steam(self):
+        self.assertTrue(run.needs_steam(settings("linux")))
+        self.assertTrue(run.needs_steam(settings("darwin")))
+
+
+class StartGameTests(unittest.TestCase):
+    def quick(self, launch_cmd: str) -> "run.Settings":
+        return settings(
+            "linux",
+            {
+                "LAUNCH_CMD": launch_cmd,
+                "GAME_PROCESS_PATTERN": "[n]o-such-game-process-xyz",
+                "LAUNCH_TIMEOUT": "1",
+                "POLL_INTERVAL": "0.1",
+            },
+        )
+
+    def test_a_game_that_never_appears_fails_within_the_launch_timeout(self):
+        started = time.monotonic()
+        with self.assertRaisesRegex(run.RunError, "did not start within 1 s"):
+            run.start_game(self.quick("true"))
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_a_failing_launch_command_is_a_clear_error(self):
+        with self.assertRaisesRegex(run.RunError, "launch command failed"):
+            run.start_game(self.quick("false"))
+
+    def test_a_launch_command_that_hangs_is_cut_off_at_the_timeout(self):
+        started = time.monotonic()
+        with self.assertRaisesRegex(run.RunError, "launch command did not return within 1 s"):
+            run.start_game(self.quick("sleep 30"))
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_a_missing_launch_binary_is_a_clear_error(self):
+        with self.assertRaisesRegex(run.RunError, "launch command failed"):
+            run.start_game(self.quick("/nonexistent/launcher"))
+
+
+class PointerTests(unittest.TestCase):
+    def test_gog_clicks_with_ydotool_for_the_wayland_session(self):
+        argv = run.click_command(settings("linux", {"BUILD": "gog"}), (7, 9))
+        self.assertEqual(argv[:2], ["sh", "-c"])
+        self.assertIn("ydotool", argv[2])
+        self.assertIn("$((7 / 2))", argv[2])
+        self.assertIn("$((9 / 2))", argv[2])
+        self.assertIn("ydotool click", argv[2])
+
+    def test_gog_parks_the_pointer_off_the_hud_after_a_click(self):
+        s = settings("linux", {"BUILD": "gog"})
+        argv = run.park_command(s)
+        self.assertIn("ydotool", argv[-1])
+        self.assertIn(f"$(({s.park_point[0]} / 2))", argv[-1])
+        self.assertNotIn("ydotool click", argv[-1])
+
+    def test_steam_clicks_are_unchanged_and_do_not_park(self):
+        self.assertEqual(settings("linux").click_cmd, ("xdotool", "mousemove", "{x}", "{y}", "click", "1"))
+        self.assertIsNone(run.park_command(settings("linux")))
+        self.assertIsNone(run.park_command(settings("darwin")))
+
+    def test_park_point_and_move_command_can_be_overridden(self):
+        s = settings("linux", {"PARK_POINT": "5,6", "MOVE_CMD": "mv {x} {y}"})
+        self.assertEqual(s.park_point, (5, 6))
+        self.assertEqual(run.park_command(s), ["mv", "5", "6"])
+
+    def test_menu_mode_raises_the_game_only_on_macos(self):
+        self.assertTrue(run.needs_raise(settings("darwin")))
+        self.assertFalse(run.needs_raise(settings("linux")))
 
 
 class ParsePointTests(unittest.TestCase):

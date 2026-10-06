@@ -47,7 +47,7 @@ These are the macOS preconditions. Linux has its own list under [Linux and Proto
 
 ## Desktop takeover and permissions
 
-Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default, which is the macOS display).
+Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default, which is the macOS display; see the GOG section for the 1920x1080 points).
 
 On macOS, menu mode needs these permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand. Linux needs no equivalent, because `xdotool` posts the events through XTEST.
 
@@ -86,6 +86,63 @@ Linux preconditions:
 - The repo is mounted into the container, or otherwise present under `/home/default`.
 
 The click coordinates still default to the 2560x1440 macOS values. The container's display is 1920x1080, so menu mode and `--warm-loads` need all six points set in `.env` before they will work there.
+
+## GOG build and KDE Wayland
+
+`BUILD=gog` runs the GOG install from the Minigalaxy Flatpak (see [gog.md](gog.md)) instead of Steam. It needs no Steam client, console log or cloud-sync check, and avoids the one-session-per-account blocker. `BUILD` defaults to `steam`, and the Steam and macOS defaults do not change. The GOG build is Linux only.
+
+```bash
+BUILD=gog DISPLAY=:0 XAUTHORITY=/run/user/$(id -u)/xauth_* scripts/run.py gog-run1
+```
+
+`XAUTHORITY` is only needed when the shell is not inside the desktop session (a tty or ssh); the game itself starts without it, Steam does not.
+
+The settings that differ per build (`BOTTLE`, `GAME_DIR`, `DATA_DIR`, `WINE_USER`, `LAUNCHER_APP`, `LAUNCH_CMD`, `CLICK_CMD`, `MOVE_CMD`, `STEAM_CONSOLE_LOG`, `STEAM_PROCESS_PATTERN`) are read as `GOG_<name>` under `BUILD=gog`, so the Steam overrides in `.env` cannot leak into a GOG run. Everything else (timeouts, click points, markers) is shared.
+
+| Setting | GOG default |
+| --- | --- |
+| `GOG_BOTTLE` | `/media/gog/Xenonauts 2/prefix/drive_c` |
+| `GOG_GAME_DIR` | `/media/gog/Xenonauts 2` |
+| `GOG_WINE_USER` | the login name |
+| `GOG_LAUNCH_CMD` | `flatpak run --command=env io.github.sharkwouter.Minigalaxy WINEPREFIX=<sandbox prefix> WINEDEBUG=-all /app/bin/wine start /d c:\game c:\game\Xenonauts2.exe` |
+| `GOG_CLICK_CMD` | `ydotool` move then click (below) |
+| `GOG_MOVE_CMD` | `ydotool` move, used to park the pointer |
+
+The launch command is Minigalaxy's own command line, run without clicking Play. The prefix has to be given by the document-portal path Minigalaxy uses (`/run/user/1000/doc/<id>/gog/Xenonauts 2/prefix`), because the `c:\game` link inside the prefix is relative to that path; the host path `/media/gog/...` gives `ShellExecuteEx failed: File not found`. The id (`5cf27610`) is machine specific: take it from `install_dir` in the Minigalaxy `config.json`, and set `GOG_LAUNCH_CMD` in `.env` if yours differs. The launch command must return within `LAUNCH_TIMEOUT` and the game process must appear within the same time; otherwise the run ends with `launch command failed`, `launch command did not return within N s` or `Xenonauts2.exe did not start within N s`. A game that is already running is stopped before the launch.
+
+Preconditions:
+
+- Minigalaxy is installed with Xenonauts 2 under `/media/gog` and has been run once (docs/gog.md). The Minigalaxy window does not need to be open.
+- The mods are built into the GOG mod folder and enabled in the GOG `Settings/contentpacks.json`. The build output goes where `ModInstanceFolder` points, so override it on the command line instead of editing the Steam `Directory.Build.local.props`:
+
+  ```bash
+  cd src/x2_load_profiler && dotnet build -p:ModInstanceFolder="<gog-user-data>/Mods/x2_load_profiler" -p:GameFolder="/media/gog/Xenonauts 2/Xenonauts2_Data/Managed"
+  ```
+
+  Do the same in `src/x2_load_timing`. The Steam and GOG builds have identical `Assembly-CSharp.dll`, so the Steam `GameFolder` also compiles.
+- `ydotoold` is running for `--load menu` and `--warm-loads`: `setsid ydotoold &` as the desktop user (the user must be in the `input` group for `/dev/uinput`). Auto mode needs no input.
+
+### Clicks on Wayland
+
+`xdotool` cannot post events to a Wayland compositor, so the GOG build clicks with `ydotool`. Two properties of this host's KDE session shape the command:
+
+- `ydotool mousemove --absolute` does not reach the requested point. The default command instead moves to the top-left corner with a large relative move and then moves `x / 2`, `y / 2`: the pointer travels twice the requested distance, which was measured by screenshot at several distances. This ratio depends on the pointer speed setting and acceleration profile, so recalibrate it if the pointer lands elsewhere.
+- The socket is `$XDG_RUNTIME_DIR/.ydotool_socket`; the command falls back to `/run/user/<uid>/.ydotool_socket` when `YDOTOOL_SOCKET` is not set.
+
+After every click the pointer is moved to `PARK_POINT` (default `1900,540`, empty right-hand edge) through `MOVE_CMD`, so no tooltip stays open over the HUD and no element keeps the focus. `MOVE_CMD` is unset on macOS and on Steam/Linux, which behave as before.
+
+Click points are screen pixels of a 1920x1080 display and depend on the display and the game's UI scale. The points calibrated for this host (from screenshots of the main menu, the load list and the in-game menu) are:
+
+| Setting | Point | Element |
+| --- | --- | --- |
+| `MENU_LOAD_GAME` | `984,976` | LOAD GAME on the main menu |
+| `MENU_SAVE_ROW` | `700,402` | second "Day 41: Cleaner Leader, Turn 10" row, which is `auto_groundcombat_turn_10_start-62.json` (the first is `user_baseline_turn10-3.json`) |
+| `MENU_LOAD_SAVE` | `720,834` | LOAD SAVE |
+| `GAME_MENU_BUTTON` | `40,40` | gear at the top left of the combat screen |
+| `GAME_MENU_LOAD_GAME` | `960,570` | LOAD GAME in the game menu |
+| `GAME_MENU_SAVE_ROW` | `700,402` | same row in the in-game load list |
+
+Rows are positional, so a different save list needs different rows; the run fails with `wrong save loaded` rather than measuring the wrong save. Screenshots on this session: `spectacle -b -n -f -p -o file.png` (the `-p` includes the pointer).
 
 ## Verification and failure handling
 

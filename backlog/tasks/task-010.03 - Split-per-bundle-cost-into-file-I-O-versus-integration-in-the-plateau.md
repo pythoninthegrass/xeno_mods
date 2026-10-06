@@ -4,7 +4,7 @@ title: Split per-bundle cost into file I/O versus integration in the plateau
 status: In Progress
 assignee: []
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-06 02:38'
+updated_date: '2026-10-06 03:33'
 labels:
   - load-time
 dependencies: []
@@ -55,4 +55,6 @@ Findings: bundle files are resident before any load, so each of the 8808 loads i
 Next optimization this suggests: a cap sweep (TASK-010.05) on Linux, 50 to 800, since neither the main thread nor the deserialize thread is saturated at 200 and loads wait up to 4.4 s for a slot. Whether it transfers to macOS needs the same sweep there.
 
 Still open against the acceptance criteria: AC #1 (a per-load read versus integrate split; only a per-thread split exists, and the AssetBundleRequest.progress experiment is not done), AC #2 (bundle size and compression as predictors are not measured), and the macOS plateau has not been sampled.
+
+2026-10-05, cap sweep on Linux (profiler off, 2 runs per cap, documented in docs/load-time-report.md under Cap sweep on Linux). Intro to setup means: cap 25 8.49 s, 50 6.63 s, 100 5.84 s, 200 5.94 s, 400 6.26 s, 800 8.05 s; unlimited about 18 s (profiler on). The curve has a flat bottom from 100 to 400 that these runs cannot resolve, so the shipped 200 stays and the cap is not a remaining lever on Linux. This closes the 'next optimization' suggested by the thread split and replaces it: the remaining lever is doing fewer loads, since main-thread work rises with load volume and the TASK-010.06 audit found 2574 of the 5497 pre-setup loads are re-loads of assets released at load start. That is TASK-010.07. On macOS the cap sweep has not been run.
 <!-- SECTION:NOTES:END -->

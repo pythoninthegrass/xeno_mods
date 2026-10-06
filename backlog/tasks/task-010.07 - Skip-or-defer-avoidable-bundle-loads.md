@@ -1,11 +1,11 @@
 ---
 id: TASK-010.07
 title: Skip or defer avoidable bundle loads
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-06 19:57'
+updated_date: '2026-10-06 20:02'
 labels:
   - load-time
 dependencies:
@@ -80,4 +80,12 @@ HANDOFF for the next agent (unattempted parts). Read CLAUDE.local.md and docs/lo
 Pitfalls: decompiled sources are not kept; regenerate with ilspycmd (dotnet tool install ilspycmd --tool-path <dir>, DOTNET_ROOT=$HOME/.local/share/mise/dotnet-root, run on Assembly-CSharp.dll with -p -o <dir> -r <Managed dir>). Measure with DISPLAY=:0 scripts/run.py <name>, profiler off (remove profiler.txt), alternate arms, at least 3 cold pairs; noise is 0.1 to 0.2 s within a pair. Killing the game after a failed load makes the next launch show a Crash Report dialog that blocks the auto-load (run.py: no 'Queued LoadGameCommand' line appeared); close it through the KVM with the mouse-event recipe in CLAUDE.local.md (CLOSE was near page coordinates 952,1233). At the shipping log level the mod's Log.Warn lines are dropped; use Log.Error or a file to see patch failures. Capture TSV columns: L lines are 0 L, 1 sequence, 2 time, 3 queue ms, 4 latency ms, 5 type, 6 path; U lines are 0 U, 1 time, 2 type, 3 path (an off-by-one here cost time). Keep contentpacks.json with both mods enabled and no profiler.txt in the mod folder; restore any game file you change.
 
 2026-10-06, read trace for the strategy-scope deferral (commit 5028f48; handoff item 1 done). CaptureReadPatch (prefix on private ContentManager.InternalGet, capture only) writes R lines on the first Get per load generation; FirstReadTracker (3 tests), BundleRecord.ReadLine (1 test), unread_loads in analyze_bundles.py (5 tests). Run 94, docs/diagnosis/run94-readtrace-*: 1340 reads for 8808 loads, 4921 of 5497 pre-setup loads never read via Get, including 586 ground combat audio, 518 prefab and 260 map loads that the mission needs. Get is not how the game consumes most content, so unread is not evidence of unused, and no deferral candidate list can be derived. Ceiling for the 481 strategy first loads is about 0.3 s (0.7 ms main-thread time per load), inside pair noise, with a whole-load failure if a needed asset is skipped. Decision: deferral class not implemented. No class from this task is kept (class 1 closed earlier, no gain). Keeping templates (handoff item 2) needs the reference graph; ceiling 2 to 3 s at most on this host. AC #1 and #2 hold for the one class implemented. AC #3 and #4 (save reloads, strategy return) were not verified because no class is kept; the task is left In Progress for the owner to decide whether to waive them and close.
+
+2026-10-06, closed by Lance: AC #3 and #4 waived because no class is kept (class 1 no gain, deferral not implemented from the read trace). Not checked, not verified.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Investigated avoidable bundle loads one class at a time. Class 1 (keep re-requested assets across the load screen) was implemented test-first, measured on Linux and removed: keeping everything fails the load, keeping only Sprite and AudioClip gains 0.01 s (noise). Deferral of the 481 strategy first loads was evaluated with a new read trace (ContentManager.InternalGet prefix, R lines, FirstReadTracker, unread_loads): only about 10% of loads are ever read through Get, so it cannot identify unused content, and the ceiling is about 0.3 s with whole-load failure risk, so it was not implemented. Template keeping needs a reference graph and is not pursued. No class shipped; findings and data in docs/load-time-report.md and docs/diagnosis/run94-*. AC #3 and #4 waived by the owner. Follow-up if wanted: template reference graph, ceiling 2 to 3 s on this host.
+<!-- SECTION:FINAL_SUMMARY:END -->

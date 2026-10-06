@@ -9,7 +9,7 @@
 ## Results
 
 | Phase | Cold load (first after launch) | Warm load (third, no restart) |
-|---|---|---|
+| --- | --- | --- |
 | Click Load to load screen up | about 2 s | about 2 s |
 | Silent gap before `LoadScreen, Handling Setup for GroundCombat` | 21.4 s | 22.4 s |
 | `InitializeMap` (PhasedFSM) | 10.5 s | 4.7 s |
@@ -43,7 +43,7 @@ Both throttles are read from `optimizing.json` in the game folder, a flat JSON f
 Test: `{"CM_MAX_CONCURRENT_ASSET_BUNDLE_FILES_LOADING": 200}` in `optimizing.json` (original backed up as `optimizing.json.orig`), fresh game launch, then one load of `auto_groundcombat_turn_10_start-62.json`. The file was read: the log has no "Config file not found: optimizing.json" line.
 
 | | Cap 25 (default), turn 13 save | Cap 200, turn 10 save |
-|---|---|---|
+| --- | --- | --- |
 | Silent gap before setup | 21.4 s cold, 22.4 s warm | 19.1 s cold |
 | `InitializeMap` + `Load` + `TurnControl` (PhasedFSM total) | 17.3 s cold | 16.2 s cold |
 | Click to playable | about 40 s | 39.3 s |
@@ -61,7 +61,7 @@ The gap shrank by 2 to 3 s and the saves are not identical, so the difference is
 Two cold runs on 2026-10-04 with `optimizing.json` restored to `{}`, the `x2_load_profiler` mod enabled, `log4net.xml` still at DEBUG with `AssetTask` at WARN, and `auto/auto_groundcombat_turn_10_start-62.json` (sha256 `ef7d2aeb7b8ed7d76bd403ea58536897daf7192dec2bf0af222e14aeb81ea388`). Each run is a fresh game launch, one load, no interaction with the window. Per-second profiler lines for the whole session are in `docs/baseline/run1-profiler.txt` and `docs/baseline/run2-profiler.txt`.
 
 | Event | Run 1 | Run 2 |
-|---|---|---|
+| --- | --- | --- |
 | Queued LoadGameCommand | 23:35:58.092 | 23:38:52.831 |
 | LoadingWorld LoseFocus | +1.44 s | +1.76 s |
 | Handling Setup for GroundCombat | +22.79 s | +23.06 s |
@@ -72,7 +72,7 @@ Two cold runs on 2026-10-04 with `optimizing.json` restored to `{}`, the `x2_loa
 Profiler totals over the pre-setup gap (about 20 per-second lines each):
 
 | | Run 1 | Run 2 |
-|---|---|---|
+| --- | --- | --- |
 | Frames | 1145 | 1152 |
 | Time in `UpdateTasks` | 1347 ms | 1310 ms |
 | Share of gap wall time | 6.7% | 6.6% |
@@ -89,7 +89,7 @@ Finding: the gap is case 2/3 hybrid dominated by per-bundle start-to-done latenc
 Runs 3 to 5 (menu-loaded, `x2_load_profiler` extended with bundle counters, raw lines in `docs/diagnosis/run3-profiler.txt` to `run5-profiler.txt`) show the same deterministic load every time: 5497 bundle loads in the gap, `bundleInFlight` exactly 25 in every second, about 2600 blocked `CanStart` polls per frame in the plateau.
 
 | | Run 3 (default) | Run 4 (default) | Run 5 (`backgroundLoadingPriority=High`) |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | LoseFocus to Setup | 21.2 s | 20.2 s | 19.8 s |
 | Plateau bundle loads / mean start-to-done | 911 / 362 ms | 911 / 361 ms | 914 / 360 ms |
 | Burst bundle loads / mean start-to-done | 2734 / 50 ms | 2734 / 51 ms | 2732 / 52 ms |
@@ -99,7 +99,7 @@ Throughput follows Little's law with the cap as concurrency: about 35 completion
 Runs 8 and 9 use the automated auto-load route (`scripts/run.py`), the same save, 5 `[ERROR]` lines and 20 state-loss matches each, raw lines in `docs/diagnosis/run8-profiler.txt` and `run9-profiler.txt`. Only one variable differs.
 
 | | Run 8 (cap 25) | Run 9 (cap 200) |
-|---|---|---|
+| --- | --- | --- |
 | Intro to setup | 23.60 s | 19.80 s |
 | Queue to playable | 44.39 s | 40.85 s |
 | Total bundle loads | 8808 | 8808 |
@@ -123,7 +123,7 @@ The fix is a Harmony postfix on `AssetBundleFileLoadOperation.CanStart` in `x2_l
 All four runs below are cold, menu-loaded through `scripts/run.py --load menu`, same save, `log4net.xml` still at DEBUG with `AssetTask` at WARN, `optimizing.json` restored. Mod off means the `x2_load_profiler` pack set to `Enabled: false` in `contentpacks.json` (confirmed by zero `X2LoadProfiler` log lines). Every run has 5 `[ERROR]` lines and 20 state-loss matches.
 
 | Run | Condition | Intro to setup | Queue to playable |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | run11-on-menu | mod on | 20.03 s | 40.01 s |
 | run12-on-menu | mod on | 20.13 s | 39.75 s |
 | run13-off-menu | mod off | 22.50 s | 41.93 s |
@@ -139,14 +139,14 @@ The earlier baselines (21.3 s LoseFocus-to-setup gap, 42 to 43 s total) agree wi
 Four more launches with `scripts/run.py --load menu --warm-loads 2`: each launch is one cold menu load followed by two in-session reloads of the same baseline save through the in-game menu (no restart), same settings as above. Every launch has 15 `[ERROR]` lines (5 per load) and 60 state-loss matches (20 per load), identical to the single-load runs. Mod off runs come first, then mod on.
 
 | Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | run20-off-warm | mod off | 22.66 s | 42.49 s | 23.38, 23.37 s | 35.17, 35.13 s |
 | run21-off-warm | mod off | 22.66 s | 41.67 s | 23.34, 23.35 s | 34.79, 35.37 s |
 | run22-on-warm | mod on | 20.54 s | 39.71 s | 20.78, 20.72 s | 32.15, 33.13 s |
 | run23-on-warm | mod on | 20.49 s | 40.07 s | 20.90, 20.47 s | 32.13, 31.68 s |
 
 | | Mod off | Mod on | Difference |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Cold intro to setup (runs 11 to 14, 20 to 23, mean of 4) | 22.60 s | 20.30 s | -2.30 s (-10%) |
 | Cold queue to playable (mean of 4) | 42.07 s | 39.89 s | -2.18 s (-5%) |
 | Warm intro to setup (mean of 4) | 23.36 s | 20.72 s | -2.64 s (-11%) |
@@ -165,14 +165,14 @@ All earlier numbers were taken with `log4net.xml` at DEBUG. At the shipping conf
 Four launches on 2026-10-05, each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), `log4net.xml` unchanged, `optimizing.json` at `{}`. Markers for each launch are in `docs/baseline/shipping/`. Every launch has 15 `[ERROR]` lines (5 per load, same as the DEBUG runs). `state-loss` matches fall from 20 to 10 per load at this level in both arms because half of those lines are INFO or DEBUG, so the check stays valid only as an on/off comparison.
 
 | Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | run50-ship-off-warm | mod off | 24.47 s | 43.14 s | 24.25, 24.25 s | 34.37, 34.70 s |
 | run52-ship-off-warm | mod off | 24.21 s | 40.95 s | 23.83, 24.39 s | 33.85, 34.50 s |
 | run51-ship-on-warm | mod on | 21.87 s | 38.10 s | 21.01, 20.98 s | 31.04, 30.77 s |
 | run53-ship-on-warm | mod on | 19.53 s | 36.10 s | 21.57, 21.07 s | 31.65, 31.16 s |
 
 | | DEBUG, mod off | DEBUG, mod on | DEBUG gain | Shipping, mod off | Shipping, mod on | Shipping gain |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | Cold intro to setup | 22.60 s | 20.30 s | -2.30 s (-10%) | 24.34 s | 20.70 s | -3.64 s (-15%) |
 | Cold queue to playable | 42.07 s | 39.89 s | -2.18 s (-5%) | 42.04 s | 37.10 s | -4.94 s (-12%) |
 | Warm intro to setup | 23.36 s | 20.72 s | -2.64 s (-11%) | 24.18 s | 21.16 s | -3.02 s (-12%) |
@@ -194,7 +194,7 @@ What the numbers mean:
 Classes in the cold load, before setup (5497 loads, 19.9 s of activity):
 
 | Class | Loads | Est. seconds | Summed load time |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Strategy scope (templates 892, textures 459, data 398, audio 60, prefabs 31, ui 24) | 1864 (34%) | 6.7 s | 2310 s (59%) |
 | Common scope | 1109 (20%) | 4.0 s | 820 s (21%) |
 | Ground combat scope | 2524 (46%) | 9.1 s | 803 s (20%) |
@@ -227,7 +227,7 @@ Checks that the switch works: two auto-load launches with `bundle_log.txt` prese
 Six launches on 2026-10-05 (`run70-*`), each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), shipping `log4net.xml`, `optimizing.json` at `{}`, timing mod on in all arms, interleaved fix, none, profiler, fix, none, profiler. "Neither" means the `x2_load_profiler` pack disabled. Every launch has 15 `[ERROR]` lines and 30 state-loss matches (5 and 10 per load), the same as earlier shipping-level runs.
 
 | Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | run70-none-a | neither | 24.24 s | 40.92 s | 23.51, 23.46 s | 33.43, 33.07 s |
 | run70-none-b | neither | 22.55 s | 39.10 s | 23.42, 23.55 s | 33.10, 32.99 s |
 | run70-fix-a | fix only | 20.29 s | 37.29 s | 21.39, 21.24 s | 31.56, 31.09 s |
@@ -236,7 +236,7 @@ Six launches on 2026-10-05 (`run70-*`), each a menu-loaded cold load plus two in
 | run70-prof-b | fix plus profiler | 20.29 s | 37.18 s | 21.47, 21.19 s | 30.80, 31.24 s |
 
 | | Neither | Fix only | Fix plus profiler | Fix gain (neither to fix only) | Profiler overhead (fix only to fix plus profiler) |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Cold intro to setup (mean of 2) | 23.40 s | 19.66 s | 21.15 s | -3.74 s (-16%) | +1.49 s |
 | Cold queue to playable (mean of 2) | 40.01 s | 36.59 s | 37.89 s | -3.42 s (-9%) | +1.30 s |
 | Warm intro to setup (mean of 4) | 23.49 s | 21.35 s | 21.31 s | -2.14 s (-9%) | -0.04 s |
@@ -257,7 +257,7 @@ What a "load" is: every bundle file is opened once per content pack when the pac
 Cold load, pre-setup window (second `Intro Complete` to `Handling Setup`), one run per condition, raw data `docs/diagnosis/run89-cap0-*` and `run90-cap200-*`:
 
 | | Cap 200 (shipped, run 90) | No cap (`bundle_cap.txt` = 0, run 89) |
-|---|---|---|
+| --- | --- | --- |
 | Window | 5.9 s | 18.1 s |
 | Main thread CPU | 3.89 s (66%) | 15.35 s (85%) |
 | `UpdateTasks` time (profile.txt) | 2.0 s (34% of wall) | 1.8 s (10% of wall) |
@@ -284,7 +284,7 @@ Not done: a per-load split inside `LoadAssetAsync` (the `AssetBundleRequest.prog
 Twelve cold auto-load launches on 2026-10-05 with the profiler off (the shipped configuration), `bundle_cap.txt` set per run, two interleaved rounds (`run10a-*`, `run10b-*`, plus `run10c-cap50` replacing a launch that failed before the game started). Every run has 5 `[ERROR]` lines and 10 state-loss matches.
 
 | Cap | Intro to setup (2 runs) | Mean | Queue to playable (2 runs) | Mean |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 25 (game default) | 8.45, 8.52 s | 8.49 s | 20.68, 20.79 s | 20.74 s |
 | 50 | 6.64, 6.61 s | 6.63 s | 18.89, 18.82 s | 18.86 s |
 | 100 | 5.96, 5.72 s | 5.84 s | 18.00, 17.77 s | 17.89 s |
@@ -302,7 +302,7 @@ The code was committed at 653e095 and removed in 2e98b51; recover it from histor
 Results, cold auto-load runs on the Linux host at the shipping log level, profiler off, errors 5 and state-loss 10 per load in every run:
 
 | Variant | Outcome |
-|---|---|
+| --- | --- |
 | Keep every previous-screen asset that the target requests again (`_descriptorsToLoad`) | Load fails. `STRICT MODE ERROR: ...game_overs/game_over.json (Call Load before Get.)`, the playable marker is never reached. |
 | The same plus the loader dependency closure (`ILoader.GetDependencies`) | Same failure. 751 assets that the baseline reloads were left unloaded: 325 templates, 290 sprites, 47 template producers, 25 UI elements, 23 prefabs, 17 audio clips, 15 mission definitions, 9 others. |
 | Keep only leaf kinds (Sprite, AudioClip) that the target requests directly | Loads and plays through to the playable marker. Only 121 loads are avoided (8687 against 8808 per session), 2% of the pre-setup loads. |
@@ -312,10 +312,25 @@ Why the first two fail: a kept template is not post-processed again, and that pr
 Timing of the leaf-kind variant, three interleaved cold pairs (`t07-on-m1..3`, `t07-off-m1..3`; two further off runs `t07-off-a` and `t07-off-c` agree):
 
 | | Intro to setup | Queue to playable |
-|---|---|---|
+| --- | --- | --- |
 | Keep off (3 runs) | 5.93, 6.02, 5.80 s (mean 5.92 s) | 18.08, 18.43, 17.89 s (mean 18.13 s) |
 | Keep on (3 runs) | 5.96, 5.82, 5.95 s (mean 5.91 s) | 18.09, 18.09, 18.23 s (mean 18.14 s) |
 
 The difference is 0.01 s, well inside the 0.1 to 0.2 s spread of a pair. The safe subset gains nothing measurable, and the part that would gain (templates, 1280 of the reloads and 1559 of the 2948 summed reload seconds) cannot be kept without the reference graph. Warm loads were not measured because `xdotool` is missing on this host. Decision: closed, no gain beyond noise; the code is removed from the tree. Deferring the 481 strategy first loads was not attempted: the audit has no read trace to show that ground combat never reads them, and the failure above shows that a missing asset fails the load rather than being tolerated.
 
 Operational note: killing the game after a failed load makes the next launch open a "Crash Report" dialog over the main menu, which blocks the auto-load (`no 'Queued LoadGameCommand' line appeared`). Close it through the KVM before rerunning.
+
+## GOG against Steam on the Linux host (TASK-011.01)
+
+Cold auto-load runs of the same baseline save (`auto_groundcombat_turn_10_start-62.json`), shipping log level, profiler off, same mods, one at a time on the same host. Steam runs the game under Proton (Flatpak Steam); GOG runs it under the Wine bundled in the Minigalaxy Flatpak. Errors 5 and state-loss 10 per load in every run, on both builds.
+
+| Run | Build | Queue to setup | Intro to setup | Queue to playable |
+| --- | --- | --- | --- | --- |
+| `steam-cold1` | Steam | 6.69 s | 6.20 s | 19.24 s |
+| `steam-cold2` | Steam | 6.81 s | 6.31 s | 19.52 s |
+| `gog-run1` | GOG | 20.70 s | 20.16 s | 40.12 s |
+| `gog-run2` | GOG | 20.89 s | 20.34 s | 39.59 s |
+
+GOG is about 2.1 times slower to playable, and the whole difference is in the pre-setup phase (intro to setup 20.2 s against 6.3 s); setup to playable is 19.4 s on GOG and 12.6 s on Steam. Within a build the two runs agree to 0.3 s. Warm loads on GOG (`gog-warm2..4`, two warm loads each) take 19.6 to 20.0 s to playable and 10.0 to 10.3 s from queue to setup, against 40 s cold.
+
+Not attributed: the Minigalaxy Wine renders through its own Direct3D implementation without DXVK, and the Flatpak logs `libEGL warning: egl: failed to create dri2 screen`, so the two builds differ in graphics path as well as in store. Do not mix GOG and Steam numbers in one comparison; baselines for the TASK-010 subtasks must name the build. Steam warm loads were not measured because `xdotool` is missing on this host.

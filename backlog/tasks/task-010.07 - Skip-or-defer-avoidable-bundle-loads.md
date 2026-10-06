@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-06 04:30'
+updated_date: '2026-10-06 04:34'
 labels:
   - load-time
 dependencies:
@@ -68,4 +68,14 @@ Not done:
 - AC #1 holds for the one class implemented; AC #2 is partial (cold only).
 
 Operational: killing the game after a failed load makes the next launch show a Crash Report dialog that blocks the auto-load; close it through the KVM before rerunning.
+
+HANDOFF for the next agent (unattempted parts). Read CLAUDE.local.md and docs/load-time-report.md first (sections: Audit of the bundle loads, Where a bundle load's time goes, Keeping assets across the load screen).
+
+1. Defer the 481 strategy-scope first loads (360 are strategy templates). They sit in LoadScreen._descriptorsToLoad, built from _target.GetRequiredAssets() plus payload runtime dependencies (LoadScreen.cs ~line 163). Blocker: no evidence ground combat never reads them; a Get on an unloaded asset throws STRICT MODE ERROR (Call Load before Get) and fails the whole load. Step 1 is a read trace: patch the private ContentManager.InternalGet (AccessTools), log every descriptor read from load through the playable point and a few turns, diff against the 481. Never-read ones are candidates. On return to strategy that screen's own load screen requests its assets again, so deferred content should reload then; verify in game (AC #4). Mechanism: remove deferred descriptors from _descriptorsToLoad (postfix on GetRequiredAssets or where the set is filled). Pure decision function and tests first.
+
+2. Keep templates (1280 reloads, 1559 of 2948 summed reload seconds). A kept template is not post-processed again, and that processing requests the assets it references through AssetReferenceProcessor (Common.Content.Processors.Load); 751 baseline reloads exist only because a parent was reloaded. Needs the reference graph: record during the main-menu startup load which descriptors each template's processing discovers (Start, GetFoundDescriptors, Stop keyed per asset), then keep the closure. Risks: mutable template state that unload/reload reset, assets loaded with a different WithFullDependencies mode. On mf the pre-setup window is only ~5.9 s so the ceiling is roughly 2 to 3 s; the 20 s window is macOS and cannot be measured from this host. Recover the Harmony glue with git show 653e095 (asset_keep_patch.cs); AssetKeep.Split already takes a keepability predicate.
+
+3. Validation not done (needed for any variant that gains): warm loads (run.py --warm-loads and --load menu need xdotool, missing on mf; install it or drive clicks through the KVM; .env click points still default to 2560x1440 and need 1920x1080 values; save rows are positional), a save made after the load that reloads, return to strategy after a mission, errors 5 and state-loss 10 per load.
+
+Pitfalls: decompiled sources are not kept; regenerate with ilspycmd (dotnet tool install ilspycmd --tool-path <dir>, DOTNET_ROOT=$HOME/.local/share/mise/dotnet-root, run on Assembly-CSharp.dll with -p -o <dir> -r <Managed dir>). Measure with DISPLAY=:0 scripts/run.py <name>, profiler off (remove profiler.txt), alternate arms, at least 3 cold pairs; noise is 0.1 to 0.2 s within a pair. Killing the game after a failed load makes the next launch show a Crash Report dialog that blocks the auto-load (run.py: no 'Queued LoadGameCommand' line appeared); close it through the KVM with the mouse-event recipe in CLAUDE.local.md (CLOSE was near page coordinates 952,1233). At the shipping log level the mod's Log.Warn lines are dropped; use Log.Error or a file to see patch failures. Capture TSV columns: L lines are 0 L, 1 sequence, 2 time, 3 queue ms, 4 latency ms, 5 type, 6 path; U lines are 0 U, 1 time, 2 type, 3 path (an off-by-one here cost time). Keep contentpacks.json with both mods enabled and no profiler.txt in the mod folder; restore any game file you change.
 <!-- SECTION:NOTES:END -->

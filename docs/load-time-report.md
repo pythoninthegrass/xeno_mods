@@ -157,3 +157,93 @@ The pre-setup gap does not shrink on warm loads with the mod on or off (it grows
 ### Save made after the load
 
 With the mod on, a save made in-game after the load (`user_task006_verify-4.json`, 2.2 MB) was reloaded in the same session: the game reached `BlockOnLocalPlayerTurn` in 33.3 s with the same squad, objectives and 5 `[ERROR]` and 20 state-loss lines as the first load.
+
+## Shipping log level (TASK-010.01)
+
+All earlier numbers were taken with `log4net.xml` at DEBUG. At the shipping configuration (root and every appender at ERROR, identical to `log4net.xml.orig`) the game drops its INFO marker lines and the profiler drops its WARN lines, so `scripts/run.py` had no timing source. The `x2_load_timing` mod now appends a timestamped line to `Mods/x2_load_timing/markers.txt` at the same five points (load command queued, load screen intro and outro complete, `Handling Setup`, `BlockOnLocalPlayerTurn`) without going through log4net, and `run.py` reads that file when it is present. The mod is enabled in both arms below. Mod off means only the `x2_load_profiler` pack (which holds the concurrency patch) is disabled.
+
+Four launches on 2026-10-05, each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), `log4net.xml` unchanged, `optimizing.json` at `{}`. Markers for each launch are in `docs/baseline/shipping/`. Every launch has 15 `[ERROR]` lines (5 per load, same as the DEBUG runs). `state-loss` matches fall from 20 to 10 per load at this level in both arms because half of those lines are INFO or DEBUG, so the check stays valid only as an on/off comparison.
+
+| Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
+|---|---|---|---|---|---|
+| run50-ship-off-warm | mod off | 24.47 s | 43.14 s | 24.25, 24.25 s | 34.37, 34.70 s |
+| run52-ship-off-warm | mod off | 24.21 s | 40.95 s | 23.83, 24.39 s | 33.85, 34.50 s |
+| run51-ship-on-warm | mod on | 21.87 s | 38.10 s | 21.01, 20.98 s | 31.04, 30.77 s |
+| run53-ship-on-warm | mod on | 19.53 s | 36.10 s | 21.57, 21.07 s | 31.65, 31.16 s |
+
+| | DEBUG, mod off | DEBUG, mod on | DEBUG gain | Shipping, mod off | Shipping, mod on | Shipping gain |
+|---|---|---|---|---|---|---|
+| Cold intro to setup | 22.60 s | 20.30 s | -2.30 s (-10%) | 24.34 s | 20.70 s | -3.64 s (-15%) |
+| Cold queue to playable | 42.07 s | 39.89 s | -2.18 s (-5%) | 42.04 s | 37.10 s | -4.94 s (-12%) |
+| Warm intro to setup | 23.36 s | 20.72 s | -2.64 s (-11%) | 24.18 s | 21.16 s | -3.02 s (-12%) |
+| Warm queue to playable | 35.12 s | 32.27 s | -2.85 s (-8%) | 34.36 s | 31.16 s | -3.20 s (-9%) |
+
+The TASK-006 gain still holds at the shipping level and is somewhat larger in seconds (3.0 to 4.9 s against 2.2 to 2.9 s). Mod-off intro to setup is about 1.5 s longer than at DEBUG, so lighter logging did not make the gap shorter. Possible causes are the timing mod's own hooks (they are in both arms) and a busy host: a smoke run taken while the display was asleep and the machine was in use measured 29.7 s intro to setup, which is why every run here keeps the display awake with `caffeinate -d`. Each cell is the mean of 2 cold or 4 warm loads, so a difference under about 0.5 s should not be read as real.
+
+## Audit of the bundle loads (TASK-010.06)
+
+Capture: one launch (run60-capture, mod on, `bundle_log.txt` present in the mod folder so `x2_load_profiler` records every `AssetBundleFileLoadOperation` and every `ContentManager.InternalUnload` call), a menu-loaded cold load and one in-session warm reload of the baseline save. Raw slices are in `docs/diagnosis/`: `run60-startup-bundle-loads.tsv` (main menu startup), `run60-cold-bundle-loads.tsv`, `run60-warm1-bundle-loads.tsv`, the matching `run60-*-reloaded-after-release.txt` name lists and `run60-markers.txt`. Columns of `L` lines: sequence, completion time, request-to-start ms, start-to-done ms, asset type, relative path, bundle name, content pack, parent (always `-`, see below). `U` lines are unloads. `scripts/analyze_bundles.py` produces the slices and the tables below. Capture timings are not used for any speed claim.
+
+What the numbers mean:
+
+- The "8808 loads per ground combat load" in the earlier sections is the whole session up to the playable point: 2609 loads at main menu startup plus 6199 for the load itself. 5497 of those 6199 finish before `Handling Setup` (the pre-setup gap) and 702 after it. A warm reload makes the same 6199.
+- Each record is a single asset read from an already resident bundle (`AssetBundle.LoadAssetAsync(relativePath)`), not a bundle file, so there is no per-load file size. The bundle name is recorded and the asset type stands in for the task type.
+- The engine's `LoadTask` has a `parent` argument that no caller sets, so the requester of a load cannot be recovered from the engine. The path (`<kind>/<scope>/...`, scope being `strategy`, `groundcombat` or `common`) is the classification used instead.
+- Estimated seconds divide the window's active span (first request to last completion, 19.9 s before setup in the cold load) by each class's share of loads, so they assume every load costs the same wall time. The summed load time column adds the start-to-done latency of every load and is far larger because many loads are in flight at once (up to 200 with the mod); use it for relative cost, not wall time.
+
+Classes in the cold load, before setup (5497 loads, 19.9 s of activity):
+
+| Class | Loads | Est. seconds | Summed load time |
+|---|---|---|---|
+| Strategy scope (templates 892, textures 459, data 398, audio 60, prefabs 31, ui 24) | 1864 (34%) | 6.7 s | 2310 s (59%) |
+| Common scope | 1109 (20%) | 4.0 s | 820 s (21%) |
+| Ground combat scope | 2524 (46%) | 9.1 s | 803 s (20%) |
+| Released at load start and loaded again (all scopes) | 2574 (47%) | 9.3 s | 2948 s (75%) |
+| of which strategy scope | 1383 (25%) | 5.0 s | 2165 s (55%) |
+| Strategy scope that is not a reload | 481 (9%) | 1.7 s | 145 s (4%) |
+| Loaded more than once inside the same window | 0 | 0 | 0 |
+| Loaded, then released again inside the same window | 0 | 0 | 0 |
+
+The scope rows add up to 5497 loads. The reload row overlaps them.
+
+Findings:
+
+1. **Release-then-reload churn is the main avoidable cost.** The main menu loads 2609 assets at startup. When the save load starts, the load screen unloads 2644 assets (2640 distinct) and then loads 2574 of the same paths again within seconds. All 1383 reloaded strategy-scope assets, 610 common templates and 261 maps are in that set. They hold 75% of the summed load time before setup because the strategy templates and textures are the slowest classes. In the warm reload it is total: 6243 unloads, then 6199 loads, every one of them a path that was released earlier in the window.
+2. **Strategy-scope content is 34% of the pre-setup loads.** 1383 of the 1864 are the reloads above. 481 are first loads in this process (360 strategy templates among them). The load screen requests all of them from its manifest, so they are not stray loads, but nothing in the capture shows ground combat reading them.
+3. **No duplicates and no load-then-release inside one window.** Every path loads exactly once per window. The duplicates are across windows (startup, cold, warm), listed by name in the `*-reloaded-after-release.txt` files: 2574 names for the cold load and 6199 for the warm one.
+
+What a mod could do, and the evidence:
+
+- **Skip the unload of assets the target load will request again (candidate for TASK-010.07).** Evidence it is safe: the same descriptors are loaded again moments after the unload, so the resulting resident assets are the same content; the capture shows no path loaded twice in a window, so there is no case where the second copy differs. Evidence still missing: whether any loaded asset keeps mutable state or post-load processing results that the unload/reload resets (templates are the largest class, 1097 + 892 + 645). The 010.07 experiment has to show an identical error count (5 per load), identical state-loss counts and an identical post-load save before it ships. Upper bound if the whole set were skipped: 2574 of 5497 pre-setup loads, about 9.3 s of the 19.9 s by count. Their 75% share of summed load time suggests the saving could be larger than the count share, because they are the slow classes, but that is not a wall-time measurement.
+- **Defer or skip the 481 strategy-scope first loads.** Not supported by the evidence yet. They are requested by the load screen manifest and the capture cannot show whether ground combat ever reads them. Skipping them without a usage trace risks a missing-asset error at the first access, so this needs a read-tracking experiment first.
+- **Nothing to remove as duplicate or load-then-release work** inside a single load: both counts are zero.
+
+## Profiler overhead and mod split (TASK-010.02)
+
+`x2_load_profiler` used to apply every patch through the game's `PatchAll`, so the "mod on" arms above ran the per-frame `UpdateTasks` profiler, the `AssetBundleFileLoadOperation` `CanStart`/`Start`/`Update` trackers and the capture hooks along with the fix. Those patches are now applied from `Create` only when `Mods/x2_load_profiler/profiler.txt` contains `true` (default off). The fix (`BundleConcurrencyPatch`, still on `PatchAll`) does not consult the switch. The auto-load patches are applied only when `auto_load.txt` exists. `bundle_log.txt` has an effect only when the profiler is on. Switch logic is `ProfilerSwitch` (`src/x2_load_profiler/profiler_switch.cs`, 5 tests written first), the patch list is `instrumentation_patches.cs`.
+
+Checks that the switch works: two auto-load launches with `bundle_log.txt` present wrote 0 bytes to `bundle_loads.tsv` with the profiler off and 1.9 MB with it on, and the auto-load harness worked in both. The shipping log level drops the profiler's WARN lines, so the logs cannot show which arm had the profiler on; the arm was set by the presence of `profiler.txt`.
+
+Six launches on 2026-10-05 (`run70-*`), each a menu-loaded cold load plus two in-session reloads of the baseline save (`--load menu --warm-loads 2`), shipping `log4net.xml`, `optimizing.json` at `{}`, timing mod on in all arms, interleaved fix, none, profiler, fix, none, profiler. "Neither" means the `x2_load_profiler` pack disabled. Every launch has 15 `[ERROR]` lines and 30 state-loss matches (5 and 10 per load), the same as earlier shipping-level runs.
+
+| Run | Condition | Cold intro to setup | Cold queue to playable | Warm intro to setup (2 loads) | Warm queue to playable (2 loads) |
+|---|---|---|---|---|---|
+| run70-none-a | neither | 24.24 s | 40.92 s | 23.51, 23.46 s | 33.43, 33.07 s |
+| run70-none-b | neither | 22.55 s | 39.10 s | 23.42, 23.55 s | 33.10, 32.99 s |
+| run70-fix-a | fix only | 20.29 s | 37.29 s | 21.39, 21.24 s | 31.56, 31.09 s |
+| run70-fix-b | fix only | 19.02 s | 35.88 s | 21.65, 21.10 s | 31.43, 31.18 s |
+| run70-prof-a | fix plus profiler | 22.00 s | 38.59 s | 21.28, 21.29 s | 31.18, 31.21 s |
+| run70-prof-b | fix plus profiler | 20.29 s | 37.18 s | 21.47, 21.19 s | 30.80, 31.24 s |
+
+| | Neither | Fix only | Fix plus profiler | Fix gain (neither to fix only) | Profiler overhead (fix only to fix plus profiler) |
+|---|---|---|---|---|---|
+| Cold intro to setup (mean of 2) | 23.40 s | 19.66 s | 21.15 s | -3.74 s (-16%) | +1.49 s |
+| Cold queue to playable (mean of 2) | 40.01 s | 36.59 s | 37.89 s | -3.42 s (-9%) | +1.30 s |
+| Warm intro to setup (mean of 4) | 23.49 s | 21.35 s | 21.31 s | -2.14 s (-9%) | -0.04 s |
+| Warm queue to playable (mean of 4) | 33.15 s | 31.32 s | 31.11 s | -1.83 s (-6%) | -0.21 s |
+
+The profiler costs about 1.3 to 1.5 s on the cold load and nothing measurable on warm loads. The cold figure rests on 2 launches per arm with a spread of 1.7 to 1.8 s inside each arm, so it is indicative, not precise; the warm figures agree to within 0.2 s across 4 loads. The fix alone removes 3.4 to 3.7 s from the cold load and 1.8 to 2.1 s from warm loads. The earlier "mod on" gains (3.6 s cold intro to setup at the shipping level) were measured with the profiler running and so understate the cold gain of the fix by about 1.5 s. The fix-only gain is smaller on warm loads here (2.1 s) than the earlier warm figure (3.0 s); the neither arm in this set is 0.7 s faster than the earlier mod-off arm, which fits the run-to-run drift noted above.
+
+### Decision: one mod with an opt-in switch
+
+`x2_load_profiler` stays a single mod. The profiler is a development tool for this repository, and the load fix, the profiler, the capture hooks and the auto-load harness share one lifecycle, one manifest and the `scripts/run.py` install and auto-load flow. Splitting would mean a second manifest, UID, `contentpacks.json` entry and install step for something a player never enables, plus either duplicated code or a shared dependency between two content packs, with no runtime gain: with the switch off the profiler patches are not applied at all, so the fix-only configuration carries zero instrumentation. The shipped default is fix only. Revisit the split only if the profiler is to be distributed to other people.

@@ -421,6 +421,56 @@ class RunNameTests(unittest.TestCase):
                 run.validate_run_name(bad)
 
 
+MARKERS = (
+    f"2026-10-05 01:24:19,495 Queued LoadGameCommand:: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FD[UNRESOLVED]>FileSystem::{SAVE_ABS})\n"
+    "2026-10-05 01:24:20,081 XenonautsLoadScreen: Intro Complete\n"
+    "2026-10-05 01:24:42,713 LoadScreen, Handling Setup for GroundCombat\n"
+    "2026-10-05 01:25:03,108 GCUI: BlockOnLocalPlayerTurn for 634 Player\n"
+)
+
+
+class ParseMarkersTests(unittest.TestCase):
+    def test_each_line_is_a_timestamp_then_a_message(self):
+        entries = run.parse_markers(MARKERS)
+        self.assertEqual(len(entries), 4)
+        self.assertEqual(entries[1].ts, datetime(2026, 10, 5, 1, 24, 20, 81000))
+        self.assertEqual(entries[1].message, "XenonautsLoadScreen: Intro Complete")
+
+    def test_blank_and_malformed_lines_are_skipped(self):
+        text = "\nnot a marker\n2026-10-05 01:24:20,081 ok\n"
+        self.assertEqual([e.message for e in run.parse_markers(text)], ["ok"])
+
+    def test_marker_entries_feed_the_same_timing_anchors(self):
+        t = run.find_timings(run.parse_markers(MARKERS))
+        self.assertAlmostEqual(t.intro_to_setup, 22.632, places=3)
+        self.assertAlmostEqual(t.queue_to_playable, 43.613, places=3)
+        self.assertIsNone(t.lose_focus_to_setup)
+
+    def test_marker_queue_line_yields_the_save_path(self):
+        self.assertEqual(run.queued_save_path(run.parse_markers(MARKERS)), SAVE_ABS)
+
+
+class TimingEntriesTests(unittest.TestCase):
+    def test_markers_win_when_present(self):
+        entries = run.timing_entries(LOG, MARKERS)
+        self.assertEqual(len(entries), 4)
+
+    def test_log_is_used_when_the_markers_file_is_empty_or_missing(self):
+        self.assertEqual(len(run.timing_entries(LOG, "")), len(run.parse_entries(LOG)))
+
+
+class MarkersFileTests(unittest.TestCase):
+    def test_markers_file_lives_in_the_timing_mod_folder(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={"DATA_DIR": "/data"})
+        self.assertEqual(s.markers_file, Path("/data/Mods/x2_load_timing/markers.txt"))
+
+    def test_timing_mod_name_can_be_overridden(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = run.load_settings(Path(d), env={"DATA_DIR": "/data", "TIMING_MOD_NAME": "t"})
+        self.assertEqual(s.markers_file, Path("/data/Mods/t/markers.txt"))
+
+
 class SnapshotTests(unittest.TestCase):
     def test_hash_files_records_missing_files_as_none(self):
         with tempfile.TemporaryDirectory() as d:

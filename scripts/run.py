@@ -75,6 +75,7 @@ DEFAULT_PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
 DEFAULT_MENU_READY_MARKER = "XenonautsLoadScreen: Outro Complete"
 DEFAULT_STATE_LOSS_PATTERN = "state-loss"
 DEFAULT_MOD_NAME = "x2_load_profiler"
+DEFAULT_TIMING_MOD_NAME = "x2_load_timing"
 DEFAULT_LEFTOVER_ARCHIVE_PREFIX = "pre-"
 QUEUED_MARKER = "Queued LoadGameCommand"
 SETUP_MARKER = "Handling Setup for GroundCombat"
@@ -82,6 +83,7 @@ INTRO_MARKER = "XenonautsLoadScreen: Intro Complete"
 LOSE_FOCUS_MARKER = "LoadingWorld - Handled LoseFocusScreenReport"
 
 HEADER_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}) \[(\w+)\] ")
+MARKER_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3}) (.+)$")
 QUEUED_PATH_RE = re.compile(r"SaveGameDescriptor: (?:FD\[[A-Z]+\]>)?FileSystem::(.+?)\)?\s*$")
 RUN_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -186,6 +188,7 @@ class Settings:
     game_menu_load_game: tuple[int, int]
     game_menu_save_row: tuple[int, int]
     mod_name: str
+    timing_mod_name: str
     leftover_archive_prefix: str
     state_loss_pattern: str
     playable_marker: str
@@ -205,6 +208,10 @@ class Settings:
     @property
     def mod_dir(self) -> Path:
         return self.data_dir / "Mods" / self.mod_name
+
+    @property
+    def markers_file(self) -> Path:
+        return self.data_dir / "Mods" / self.timing_mod_name / "markers.txt"
 
     @property
     def auto_load_file(self) -> Path:
@@ -251,6 +258,21 @@ def parse_entries(text: str) -> list[Entry]:
                 lines = []
     flush()
     return entries
+
+
+def parse_markers(text: str) -> list[Entry]:
+    """One entry per `<timestamp> <message>` line written by the x2_load_timing mod."""
+    entries: list[Entry] = []
+    for line in text.splitlines():
+        match = MARKER_RE.match(line)
+        if match:
+            entries.append(Entry(datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S,%f"), match.group(2)))
+    return entries
+
+
+def timing_entries(log_text: str, markers_text: str) -> list[Entry]:
+    """Mod markers when the timing mod wrote any, otherwise the game's own log lines (DEBUG or INFO configuration)."""
+    return parse_markers(markers_text) or parse_entries(log_text)
 
 
 def queued_save_path(entries: list[Entry]) -> str | None:
@@ -409,6 +431,7 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str
         game_menu_load_game=parse_point(config("GAME_MENU_LOAD_GAME", default="1280,760")),
         game_menu_save_row=parse_point(config("GAME_MENU_SAVE_ROW", default="896,426")),
         mod_name=config("MOD_NAME", default=DEFAULT_MOD_NAME),
+        timing_mod_name=config("TIMING_MOD_NAME", default=DEFAULT_TIMING_MOD_NAME),
         leftover_archive_prefix=config("LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX),
         state_loss_pattern=config("STATE_LOSS_PATTERN", default=DEFAULT_STATE_LOSS_PATTERN),
         playable_marker=config("PLAYABLE_MARKER", default=DEFAULT_PLAYABLE_MARKER),
@@ -467,7 +490,7 @@ def preflight(s: Settings) -> None:
 
 
 def archive_leftover_logs(s: Settings, run_name: str) -> None:
-    leftovers = sorted(s.logs_dir.glob("output.log*"))
+    leftovers = sorted(s.logs_dir.glob("output.log*")) + ([s.markers_file] if s.markers_file.exists() else [])
     if not leftovers:
         return
     dest = s.logs_dir / leftover_archive_name(run_name, s.leftover_archive_prefix)
@@ -481,12 +504,26 @@ def read_log(s: Settings) -> str:
     return log.read_text(errors="replace") if log.exists() else ""
 
 
+def read_markers(s: Settings) -> str:
+    return s.markers_file.read_text(errors="replace") if s.markers_file.exists() else ""
+
+
+def read_timing_entries(s: Settings) -> list[Entry]:
+    return timing_entries(read_log(s), read_markers(s))
+
+
 def wait_for_log(s: Settings, predicate: Callable[[list[Entry]], bool], timeout_s: float) -> bool:
-    return wait_until(lambda: predicate(parse_entries(read_log(s))), timeout_s, s.poll_interval)
+    return wait_until(lambda: predicate(read_timing_entries(s)), timeout_s, s.poll_interval)
 
 
 def click(s: Settings, point: tuple[int, int]) -> None:
     subprocess.run(click_command(s, point), check=True)
+
+
+def bring_game_to_front() -> None:
+    """Menu clicks land on whatever window is frontmost, so raise the game first."""
+    script = 'tell application "System Events" to set frontmost of (first process whose name contains "Xenonauts") to true'
+    subprocess.run(["osascript", "-e", script], check=True)
 
 
 def menu_load(s: Settings) -> None:
@@ -497,19 +534,21 @@ def menu_load(s: Settings) -> None:
     ):
         raise RunError(f"main menu was not ready within {s.launch_timeout} s of launch")
     time.sleep(1)
+    bring_game_to_front()
     for point in (s.menu_load_game, s.menu_save_row, s.menu_load_save):
         click(s, point)
         time.sleep(1.5)
 
 
 def count_playable(s: Settings) -> int:
-    return sum(1 for e in parse_entries(read_log(s)) if s.playable_marker in e.message)
+    return sum(1 for e in read_timing_entries(s) if s.playable_marker in e.message)
 
 
 def warm_load(s: Settings) -> None:
     """Reload the baseline save through the in-game menu; the row is positional like the main menu one."""
     before = count_playable(s)
     time.sleep(2)
+    bring_game_to_front()
     for point in (
         s.game_menu_button,
         s.game_menu_load_game,
@@ -520,7 +559,7 @@ def warm_load(s: Settings) -> None:
         time.sleep(1.5)
     if not wait_until(lambda: count_playable(s) > before, s.load_timeout, s.poll_interval):
         raise RunError(f"playable marker not reached within {s.load_timeout} s of the warm load")
-    queued = last_queued_save_path(parse_entries(read_log(s)))
+    queued = last_queued_save_path(read_timing_entries(s))
     if not is_expected_save(queued, s.save_rel):
         raise RunError(f"wrong warm save loaded: expected {s.save_rel}, log shows {queued}")
 
@@ -545,7 +584,7 @@ def perform_run(s: Settings, run_name: str, load: str, warm_loads: int = 0) -> l
         s.launch_timeout + s.load_timeout,
     ):
         raise RunError("no 'Queued LoadGameCommand' line appeared; the save was never loaded")
-    queued = queued_save_path(parse_entries(read_log(s)))
+    queued = queued_save_path(read_timing_entries(s))
     if not is_expected_save(queued, s.save_rel):
         raise RunError(f"wrong save loaded: expected {s.save_rel}, log shows {queued}")
     if not wait_for_log(s, lambda es: any(s.playable_marker in e.message for e in es), s.load_timeout):
@@ -553,15 +592,18 @@ def perform_run(s: Settings, run_name: str, load: str, warm_loads: int = 0) -> l
     for _ in range(warm_loads):
         warm_load(s)
     text = read_log(s)
+    entries = read_timing_entries(s)
     stop_game(s)
 
     dest = s.logs_dir / run_name
     dest.mkdir(parents=True)
     for f in sorted(s.logs_dir.glob("output.log*")):
         shutil.move(f, dest / f.name)
+    if s.markers_file.exists():
+        shutil.move(s.markers_file, dest / s.markers_file.name)
     print(f"logs archived to {dest}")
     print(f"errors: {count_errors(text)}, state-loss: {count_state_loss(text, s.state_loss_pattern)}")
-    loads = find_load_timings(parse_entries(text), s.playable_marker)
+    loads = find_load_timings(entries, s.playable_marker)
     return loads
 
 

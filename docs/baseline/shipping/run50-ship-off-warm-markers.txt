@@ -1,0 +1,18 @@
+2026-10-05 17:44:00,313 XenonautsLoadScreen: Intro Complete
+2026-10-05 17:44:22,892 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 17:44:23,629 XenonautsLoadScreen: Outro Complete
+2026-10-05 17:44:29,891 Queued LoadGameCommand:: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json)
+2026-10-05 17:44:30,132 XenonautsLoadScreen: Intro Complete
+2026-10-05 17:44:54,606 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 17:45:11,616 XenonautsLoadScreen: Outro Complete
+2026-10-05 17:45:13,029 GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]
+2026-10-05 17:45:22,255 Queued LoadGameCommand:: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json)
+2026-10-05 17:45:22,525 XenonautsLoadScreen: Intro Complete
+2026-10-05 17:45:46,772 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 17:45:56,030 XenonautsLoadScreen: Outro Complete
+2026-10-05 17:45:56,629 GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]
+2026-10-05 17:46:06,088 Queued LoadGameCommand:: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FileSystem::C:/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json)
+2026-10-05 17:46:06,355 XenonautsLoadScreen: Intro Complete
+2026-10-05 17:46:30,603 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 17:46:40,183 XenonautsLoadScreen: Outro Complete
+2026-10-05 17:46:40,786 GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]

@@ -8,7 +8,6 @@ using log4net;
 
 namespace X2LoadProfiler {
 
-    [HarmonyPatch(typeof(ContentManager), "UpdateTasks")]
     public static class UpdateTasksPatch {
 
         private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);
@@ -22,6 +21,7 @@ namespace X2LoadProfiler {
 
         [HarmonyPostfix]
         public static void Postfix(Bag<IAssetTask> ____processingTasks, Bag<IAssetTask> ____pendingTasks) {
+            BundleCapture.Flush();
             if (!Stats.EndFrame(Stopwatch.GetTimestamp(), ____processingTasks.Count, ____pendingTasks.Count)) {
                 return;
             }

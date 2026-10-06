@@ -20,9 +20,19 @@ On success it prints the `[ERROR]` count, the state-loss count and four timings:
 
 `menu` waits for the main menu and posts three mouse clicks (LOAD GAME, the first Turn 10 save row, LOAD SAVE) with `CLICK_CMD`. Use it for the mod-off arm of the TASK-007 comparison. The save row is positional, so the run still verifies the save from the log.
 
+## Profiler switch
+
+The per-second profiler, bundle trackers and capture hooks are applied only when `Mods/x2_load_profiler/profiler.txt` contains `true`, and `bundle_log.txt` has an effect only with the profiler on. The bundle cap fix does not depend on it, and the auto-load patches are applied whenever `auto_load.txt` exists. `run.py` does not write `profiler.txt`; create or remove it before a run to choose the fix-only or fix-plus-profiler arm. At the shipping log level the profiler's WARN lines are dropped, so the file is the only record of which arm ran.
+
 ## Warm loads
 
 `--warm-loads N` repeats the load N times after the first one without restarting the game: it opens the in-game menu, LOAD GAME, picks the baseline save row and LOAD SAVE, then waits for the next playable marker and checks the queued path. The first load is cold and the rest are warm; the script prints timings for each. It needs the same desktop access as menu mode. A save made in-game with the profiler enabled triggers a "Missing Content" confirmation when loaded with the profiler disabled, so warm loads use the baseline save, which has no mod dependency. Both load lists are positional (`GAME_MENU_SAVE_ROW`, `MENU_SAVE_ROW`): an extra save above the baseline row shifts it by 55 px.
+
+## Timing source at the shipping log level
+
+At the shipping `log4net.xml` (ERROR everywhere) the game writes none of the marker lines, so `run.py` reads `Mods/x2_load_timing/markers.txt` written by the `x2_load_timing` mod (`src/x2_load_timing`). When that file has entries it is used instead of `output.log`; otherwise `output.log` is parsed as before, so DEBUG runs and old logs still work. The file is archived next to `output.log` as `markers.txt`. Keep the timing pack enabled in `contentpacks.json` for both mod-on and mod-off arms and disable only `x2_load_profiler` for the off arm. `TIMING_MOD_NAME` overrides the folder name.
+
+Menu mode raises the game window with System Events before clicking, since the clicks land on whatever window is frontmost. Keep the display awake (`caffeinate -d uv run run.py ...`): with the display asleep the game does not launch. The save rows are positional. When saves are added the baseline row moves, so set `MENU_SAVE_ROW` and `GAME_MENU_SAVE_ROW` in `scripts/.env` (currently `947,481` and `896,481`).
 
 ## Preconditions
 

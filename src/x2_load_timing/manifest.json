@@ -1,0 +1,13 @@
+{
+	"version": "0.0.1",
+	"asset": {
+		"Name": "X2 Load Timing",
+		"UID": "b6f1d6a4-3c52-4c0e-9a77-5f0d2e8a41c9",
+		"Description": "Writes load phase timestamps to a file, independent of the game's log level.",
+		"Author": "pythoninthegrass",
+		"Tags": ["Utility", "Debug"],
+		"Version": "0.0.1",
+		"$type": "Common.Content.DataStructures.ContentPackManifest"
+	},
+	"$type": "Common.Content.DataStructures.VersionedAsset"
+}

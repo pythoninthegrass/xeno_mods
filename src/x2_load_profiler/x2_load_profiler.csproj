@@ -38,6 +38,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../x2_load_timing/marker_log.cs" Link="marker_log.cs" />
+  </ItemGroup>
+
   <!-- Install the manifest, DLL and PDB into the game's local mod folder after every build -->
   <Target Name="CopyOutputToModFolder" AfterTargets="Build">
     <ItemGroup>

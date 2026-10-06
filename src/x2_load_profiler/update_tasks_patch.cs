@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using Artitas.Utils;
@@ -5,12 +6,16 @@ using Common.Content;
 using Common.Content.Managers;
 using HarmonyLib;
 using log4net;
+using X2LoadTiming;
 
 namespace X2LoadProfiler {
 
     public static class UpdateTasksPatch {
 
         private static readonly ILog Log = ArtitasLogger.GetLogger(MethodBase.GetCurrentMethod()!.DeclaringType);
+
+        // Set when the profiler is on; keeps the per-second lines available at log levels that drop WARN
+        public static string? ProfilePath;
 
         private static readonly UpdateTasksStats Stats = new UpdateTasksStats(Stopwatch.Frequency);
 
@@ -28,7 +33,9 @@ namespace X2LoadProfiler {
 
             var s = Stats.Last;
             var b = BundleLoadTracker.Stats.TakeSnapshot(BundleLoadTracker.InFlight);
-            Log.Warn($"[X2LoadProfiler] frames={s.Frames} updateMs={s.UpdateMs:F1} processing={s.Processing} pending={s.Pending} completed={s.Completed} wallMsPerFrame={s.WallMsPerFrame:F1} bundleStarted={b.Started} bundleDone={b.Completed} bundleInFlight={b.InFlight} bundleBlockedPolls={b.BlockedPolls} bundleMeanMs={b.MeanLatencyMs:F0} bundleMaxMs={b.MaxLatencyMs:F0}");
+            string line = ProfileLine.Format(s, b);
+            Log.Warn(line);
+            MarkerLog.Append(ProfilePath, DateTime.Now, line);
         }
     }
 

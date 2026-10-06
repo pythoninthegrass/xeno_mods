@@ -29,6 +29,8 @@ namespace X2LoadProfiler {
 
         private const string ProfilerFileName = "profiler.txt";
 
+        private const string ProfileOutputFileName = "profile.txt";
+
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
             AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
@@ -60,6 +62,8 @@ namespace X2LoadProfiler {
                 return;
             }
             InstrumentationPatches.ApplyProfiler(patcher);
+            UpdateTasksPatch.ProfilePath = Path.Combine(mod.ContentPack, ProfileOutputFileName);
+            File.WriteAllText(UpdateTasksPatch.ProfilePath, "");
             if (File.Exists(Path.Combine(mod.ContentPack, BundleCaptureFlagFileName))) {
                 BundleCapture.Enable(Path.Combine(mod.ContentPack, BundleCaptureOutputFileName));
             }

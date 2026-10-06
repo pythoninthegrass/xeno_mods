@@ -21,6 +21,7 @@
     <Compile Include="../../src/x2_load_profiler/bundle_concurrency.cs" Link="bundle_concurrency.cs" />
     <Compile Include="../../src/x2_load_profiler/bundle_record.cs" Link="bundle_record.cs" />
     <Compile Include="../../src/x2_load_profiler/profiler_switch.cs" Link="profiler_switch.cs" />
+    <Compile Include="../../src/x2_load_profiler/profile_line.cs" Link="profile_line.cs" />
     <Compile Include="../../src/x2_load_timing/marker_log.cs" Link="marker_log.cs" />
   </ItemGroup>
 

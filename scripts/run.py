@@ -21,6 +21,7 @@ Note:
 """
 
 import argparse
+import getpass
 import os
 import re
 import shlex
@@ -30,7 +31,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
@@ -69,6 +70,41 @@ click({x}, {y});
 
 DEFAULT_MACOS_CLICK_CMD = ("osascript", "-l", "JavaScript", "-e", JXA_CLICK)
 DEFAULT_LINUX_CLICK_CMD = ("xdotool", "mousemove", "{x}", "{y}", "click", "1")
+DEFAULT_LINUX_MOVE_CMD = None
+DEFAULT_PARK_POINT = "1900,540"
+BUILDS = ("steam", "gog")
+BUILD_SPECIFIC_KEYS = {
+    "BOTTLE",
+    "GAME_DIR",
+    "DATA_DIR",
+    "WINE_USER",
+    "LAUNCHER_APP",
+    "LAUNCH_CMD",
+    "CLICK_CMD",
+    "MOVE_CMD",
+    "STEAM_CONSOLE_LOG",
+    "STEAM_PROCESS_PATTERN",
+}
+GOG_INSTALL_DIR = "/media/gog/Xenonauts 2"
+GOG_BOTTLE = f"{GOG_INSTALL_DIR}/prefix/drive_c"
+GOG_SANDBOX_PREFIX = "/run/user/1000/doc/5cf27610/gog/Xenonauts 2/prefix"
+GOG_MINIGALAXY = "io.github.sharkwouter.Minigalaxy"
+GOG_LAUNCH_CMD = (
+    "flatpak",
+    "run",
+    "--command=env",
+    GOG_MINIGALAXY,
+    f"WINEPREFIX={GOG_SANDBOX_PREFIX}",
+    "WINEDEBUG=-all",
+    "/app/bin/wine",
+    "start",
+    "/d",
+    "c:\\game",
+    "c:\\game\\Xenonauts2.exe",
+)
+YDOTOOL_MOVE = "ydotool mousemove --absolute -x {x} -y {y}"
+GOG_CLICK_CMD = ("sh", "-c", f"{YDOTOOL_MOVE} && sleep 0.3 && ydotool click 0xC0")
+GOG_MOVE_CMD = ("sh", "-c", YDOTOOL_MOVE)
 DEFAULT_SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
 DEFAULT_GAME_PROCESS_PATTERN = "[X]enonauts2.exe"
 DEFAULT_PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
@@ -105,6 +141,8 @@ class PlatformDefaults:
     steam_process_pattern: str
     launch_cmd: tuple[str, ...]
     click_cmd: tuple[str, ...]
+    move_cmd: tuple[str, ...] | None
+    """Moves the pointer off the HUD after a click; None where clicks leave it alone."""
 
 
 PLATFORM_DEFAULTS = {
@@ -117,6 +155,7 @@ PLATFORM_DEFAULTS = {
         steam_process_pattern=DEFAULT_MACOS_STEAM_PROCESS_PATTERN,
         launch_cmd=DEFAULT_MACOS_LAUNCH_CMD,
         click_cmd=DEFAULT_MACOS_CLICK_CMD,
+        move_cmd=None,
     ),
     "linux": PlatformDefaults(
         wine_user=DEFAULT_LINUX_WINE_USER,
@@ -127,12 +166,28 @@ PLATFORM_DEFAULTS = {
         steam_process_pattern=DEFAULT_LINUX_STEAM_PROCESS_PATTERN,
         launch_cmd=DEFAULT_LINUX_LAUNCH_CMD,
         click_cmd=DEFAULT_LINUX_CLICK_CMD,
+        move_cmd=DEFAULT_LINUX_MOVE_CMD,
     ),
 }
 
 
-def platform_defaults(platform: str) -> PlatformDefaults:
-    return PLATFORM_DEFAULTS.get(platform, PLATFORM_DEFAULTS["linux"])
+def platform_defaults(platform: str, build: str = "steam") -> PlatformDefaults:
+    """The GOG build only exists as the Minigalaxy install on Linux; its click defaults suit the Wayland session."""
+    defaults = PLATFORM_DEFAULTS.get(platform, PLATFORM_DEFAULTS["linux"])
+    if build != "gog":
+        return defaults
+    return replace(
+        defaults,
+        wine_user=getpass.getuser(),
+        bottle=GOG_BOTTLE,
+        launcher_app="",
+        game_dir=GOG_INSTALL_DIR,
+        steam_console_log="",
+        steam_process_pattern="",
+        launch_cmd=GOG_LAUNCH_CMD,
+        click_cmd=GOG_CLICK_CMD,
+        move_cmd=GOG_MOVE_CMD,
+    )
 
 
 @dataclass(frozen=True)
@@ -173,6 +228,8 @@ class Timings:
 
 @dataclass(frozen=True)
 class Settings:
+    platform: str
+    build: str
     bottle: Path
     game_dir: Path
     data_dir: Path
@@ -197,9 +254,11 @@ class Settings:
     steam_process_pattern: str
     quit_grace: int
     poll_interval: float
-    steam_console_log: Path
+    steam_console_log: Path | None
     launch_cmd: tuple[str, ...]
     click_cmd: tuple[str, ...]
+    move_cmd: tuple[str, ...] | None
+    park_point: tuple[int, int]
 
     @property
     def logs_dir(self) -> Path:
@@ -350,6 +409,10 @@ def click_command(s: Settings, point: tuple[int, int]) -> list[str]:
     return substitute(s.click_cmd, {"{x}": str(point[0]), "{y}": str(point[1])})
 
 
+def park_command(s: Settings) -> list[str] | None:
+    return None if s.move_cmd is None else substitute(s.move_cmd, {"{x}": str(s.park_point[0]), "{y}": str(s.park_point[1])})
+
+
 def parse_point(text: str) -> tuple[int, int]:
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 2:
@@ -390,32 +453,46 @@ class _MappingRepository:
 def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str = sys.platform) -> Settings:
     from decouple import Config, RepositoryEnv
 
-    d = platform_defaults(platform)
-
     env_file = cwd / ".env"
     file_values = RepositoryEnv(str(env_file)).data if env_file.exists() else {}
     process_env = os.environ if env is None else env
     config = Config(_MappingRepository({**file_values, **process_env}))
+
+    build = config("BUILD", default="steam")
+    if build not in BUILDS:
+        raise ValueError(f"unknown BUILD {build!r}: use one of {', '.join(BUILDS)}")
+    if build == "gog" and platform == "darwin":
+        raise ValueError("the gog build runs on Linux only")
+    d = platform_defaults(platform, build)
+    prefix = "GOG_" if build == "gog" else ""
+
+    def key(name: str) -> str:
+        """The GOG build reads GOG_<name> for the settings that differ per build, so Steam overrides in .env cannot leak into it."""
+        return prefix + name if name in BUILD_SPECIFIC_KEYS else name
 
     def command(key: str, default: tuple[str, ...]) -> tuple[str, ...]:
         """Overrides are shell-quoted strings; the defaults stay tuples because the JXA clicker cannot survive a split."""
         value = config(key, default="")
         return tuple(shlex.split(value)) if value else default
 
-    bottle = Path(config("BOTTLE", default=d.bottle)).expanduser()
+    bottle = Path(config(key("BOTTLE"), default=d.bottle)).expanduser()
 
     def path(key: str, default: str) -> Path:
         """'{bottle}' expands to the configured bottle, in the default and in a configured value alike."""
         return Path(config(key, default=default).replace("{bottle}", str(bottle))).expanduser()
 
-    wine_user = config("WINE_USER", default=d.wine_user)
-    game_dir = path("GAME_DIR", d.game_dir)
+    wine_user = config(key("WINE_USER"), default=d.wine_user)
+    game_dir = path(key("GAME_DIR"), d.game_dir)
     data_dir = path(
         "DATA_DIR",
         str(bottle / f"users/{wine_user}/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"),
     )
-    launcher_app = config("LAUNCHER_APP", default=d.launcher_app)
+    launcher_app = config(key("LAUNCHER_APP"), default=d.launcher_app)
+    console_log = path(key("STEAM_CONSOLE_LOG"), d.steam_console_log) if d.steam_console_log else None
+    move = command(key("MOVE_CMD"), d.move_cmd or ())
     return Settings(
+        platform=platform,
+        build=build,
         bottle=bottle,
         game_dir=game_dir,
         data_dir=data_dir,
@@ -437,12 +514,14 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str
         playable_marker=config("PLAYABLE_MARKER", default=DEFAULT_PLAYABLE_MARKER),
         menu_ready_marker=config("MENU_READY_MARKER", default=DEFAULT_MENU_READY_MARKER),
         game_process_pattern=config("GAME_PROCESS_PATTERN", default=DEFAULT_GAME_PROCESS_PATTERN),
-        steam_process_pattern=config("STEAM_PROCESS_PATTERN", default=d.steam_process_pattern),
+        steam_process_pattern=config(key("STEAM_PROCESS_PATTERN"), default=d.steam_process_pattern),
         quit_grace=config("QUIT_GRACE", default=15, cast=int),
         poll_interval=config("POLL_INTERVAL", default=0.5, cast=float),
-        steam_console_log=path("STEAM_CONSOLE_LOG", d.steam_console_log),
-        launch_cmd=command("LAUNCH_CMD", d.launch_cmd),
-        click_cmd=command("CLICK_CMD", d.click_cmd),
+        steam_console_log=console_log,
+        launch_cmd=command(key("LAUNCH_CMD"), d.launch_cmd),
+        click_cmd=command(key("CLICK_CMD"), d.click_cmd),
+        move_cmd=move or None,
+        park_point=parse_point(config("PARK_POINT", default=DEFAULT_PARK_POINT)),
     )
 
 
@@ -479,13 +558,28 @@ def launcher_app_problem(s: Settings) -> str | None:
     return None
 
 
+def needs_steam(s: Settings) -> bool:
+    return s.build == "steam"
+
+
+def needs_raise(s: Settings) -> bool:
+    """Only macOS needs the game brought to the front before clicks land."""
+    return s.platform == "darwin"
+
+
 def preflight(s: Settings) -> None:
     problem = launcher_app_problem(s)
     if problem:
         raise RunError(problem)
+    if not needs_steam(s):
+        return
     if subprocess.run(["pgrep", "-f", s.steam_process_pattern], capture_output=True).returncode != 0:
         raise RunError("CrossOver Steam is not running; start it and log in first")
-    if s.steam_console_log.exists() and cloud_sync_blocked(s.steam_console_log.read_text(errors="replace")):
+    if (
+        s.steam_console_log is not None
+        and s.steam_console_log.exists()
+        and cloud_sync_blocked(s.steam_console_log.read_text(errors="replace"))
+    ):
         raise RunError("Steam console_log.txt reports a failed cloud sync; disable Steam Cloud sync for Xenonauts 2")
 
 
@@ -518,6 +612,9 @@ def wait_for_log(s: Settings, predicate: Callable[[list[Entry]], bool], timeout_
 
 def click(s: Settings, point: tuple[int, int]) -> None:
     subprocess.run(click_command(s, point), check=True)
+    park = park_command(s)
+    if park:
+        subprocess.run(park, check=True)
 
 
 def bring_game_to_front() -> None:
@@ -534,7 +631,8 @@ def menu_load(s: Settings) -> None:
     ):
         raise RunError(f"main menu was not ready within {s.launch_timeout} s of launch")
     time.sleep(1)
-    bring_game_to_front()
+    if needs_raise(s):
+        bring_game_to_front()
     for point in (s.menu_load_game, s.menu_save_row, s.menu_load_save):
         click(s, point)
         time.sleep(1.5)
@@ -548,7 +646,8 @@ def warm_load(s: Settings) -> None:
     """Reload the baseline save through the in-game menu; the row is positional like the main menu one."""
     before = count_playable(s)
     time.sleep(2)
-    bring_game_to_front()
+    if needs_raise(s):
+        bring_game_to_front()
     for point in (
         s.game_menu_button,
         s.game_menu_load_game,
@@ -564,17 +663,26 @@ def warm_load(s: Settings) -> None:
         raise RunError(f"wrong warm save loaded: expected {s.save_rel}, log shows {queued}")
 
 
+def start_game(s: Settings) -> None:
+    """Run the launch command and wait for the game process, each bounded by the launch timeout."""
+    try:
+        subprocess.run(launch_command(s), check=True, timeout=s.launch_timeout)
+    except subprocess.TimeoutExpired:
+        raise RunError(f"launch command did not return within {s.launch_timeout} s") from None
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise RunError(f"launch command failed: {exc}") from None
+    if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout, s.poll_interval):
+        raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout} s")
+
+
 def perform_run(s: Settings, run_name: str, load: str, warm_loads: int = 0) -> list[Timings]:
     s.logs_dir.mkdir(parents=True, exist_ok=True)
     stop_game(s)
     archive_leftover_logs(s, run_name)
     if load == "auto":
         s.auto_load_file.write_text(auto_load_text(s.save_abs))
-    command = launch_command(s)
-    print(f"launching with {shlex.join(command)} (load={load})")
-    subprocess.run(command, check=True)
-    if not wait_until(lambda: bool(game_pids(s)), s.launch_timeout, s.poll_interval):
-        raise RunError(f"Xenonauts2.exe did not start within {s.launch_timeout} s")
+    print(f"launching with {shlex.join(launch_command(s))} (load={load})")
+    start_game(s)
     if load == "menu":
         menu_load(s)
 

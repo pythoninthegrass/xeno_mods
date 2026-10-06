@@ -4,7 +4,7 @@ title: Split per-bundle cost into file I/O versus integration in the plateau
 status: In Progress
 assignee: []
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-06 01:23'
+updated_date: '2026-10-06 02:38'
 labels:
   - load-time
 dependencies: []
@@ -44,3 +44,15 @@ Plan:
 
 Constraints: measurement timings are not used for speed claims (instrumentation overhead is about 1.3 to 1.5 s cold). Restore any game file touched. No game files are edited.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-05, Linux results (host runs under Proton, not the macOS CrossOver case). Written up in docs/load-time-report.md (section Where a bundle load's time goes), raw data docs/diagnosis/run89-cap0-* and run90-cap200-*. Code: scripts/sample_threads.py (per-thread CPU from /proc, 15 tests) and profile.txt output in x2_load_profiler (ProfileLine, 2 tests; 56 tests pass).
+
+Findings: bundle files are resident before any load, so each of the 8808 loads is one LoadAssetAsync on a resident bundle. File reading is not a cost (Loading.AsyncRead 0.75 to 0.79 s CPU, zero disk-wait samples). With the shipped cap 200 the pre-setup gap is 5.9 s with main-thread CPU 3.9 s; with no cap it is 18.1 s with main-thread CPU 15.4 s while UpdateTasks stays at 1.8 to 2.0 s, so the extra time is engine-side main-thread work that grows with the number of in-flight requests, not managed polling.
+
+Next optimization this suggests: a cap sweep (TASK-010.05) on Linux, 50 to 800, since neither the main thread nor the deserialize thread is saturated at 200 and loads wait up to 4.4 s for a slot. Whether it transfers to macOS needs the same sweep there.
+
+Still open against the acceptance criteria: AC #1 (a per-load read versus integrate split; only a per-thread split exists, and the AssetBundleRequest.progress experiment is not done), AC #2 (bundle size and compression as predictors are not measured), and the macOS plateau has not been sampled.
+<!-- SECTION:NOTES:END -->

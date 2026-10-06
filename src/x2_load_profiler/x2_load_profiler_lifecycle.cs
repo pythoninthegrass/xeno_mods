@@ -94,10 +94,10 @@ namespace X2LoadProfiler {
 
         // The WARN line is dropped at the shipping log level, so the same line goes to unity_settings.txt when the flag file exists
         private static void LogUnitySettings(string when) {
-            string line = $"UnitySettings {when} backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}";
+            string line = $"UnitySettings {when} {UnitySettingsGuard.Describe()}";
             Log.Warn($"[X2LoadProfiler] {line}");
             if (settingsTracePath != null) {
-                File.AppendAllText(settingsTracePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss,fff} {line}\n");
+                TraceLine(line);
             }
         }
 

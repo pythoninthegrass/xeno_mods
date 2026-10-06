@@ -10,6 +10,8 @@ namespace X2LoadProfiler {
         public int? AsyncUploadTimeSlice { get; private set; }
         public int? AsyncUploadBufferSize { get; private set; }
         public bool? AsyncUploadPersistentBuffer { get; private set; }
+        public int? VSyncCount { get; private set; }
+        public int? TargetFrameRate { get; private set; }
         public List<string> Rejected { get; } = new List<string>();
 
         public static UnityExperimentSettings Parse(string text) {
@@ -41,6 +43,12 @@ namespace X2LoadProfiler {
             if (AsyncUploadPersistentBuffer != null) {
                 parts.Add($"asyncUploadPersistentBuffer={AsyncUploadPersistentBuffer.ToString().ToLowerInvariant()}");
             }
+            if (VSyncCount != null) {
+                parts.Add($"vSyncCount={VSyncCount}");
+            }
+            if (TargetFrameRate != null) {
+                parts.Add($"targetFrameRate={TargetFrameRate}");
+            }
             return parts.Count == 0 ? "none" : string.Join(" ", parts);
         }
 
@@ -53,6 +61,10 @@ namespace X2LoadProfiler {
                     return TryInt(value, v => AsyncUploadTimeSlice = v);
                 case "asyncUploadBufferSize":
                     return TryInt(value, v => AsyncUploadBufferSize = v);
+                case "vSyncCount":
+                    return TryInt(value, v => VSyncCount = v);
+                case "targetFrameRate":
+                    return TryInt(value, v => TargetFrameRate = v);
                 case "asyncUploadPersistentBuffer":
                     if (!bool.TryParse(value, out bool b)) {
                         return false;

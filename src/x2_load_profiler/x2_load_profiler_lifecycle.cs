@@ -44,7 +44,12 @@ namespace X2LoadProfiler {
             } catch (Exception e) {
                 Log.Warn($"[X2LoadProfiler] Experiment failed: {e}");
             }
-            Log.Warn($"[X2LoadProfiler] UnitySettings backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}");
+            LogUnitySettings("Create");
+        }
+
+        // One line per call so a value the game rewrites during a load shows up as a change between lines
+        private static void LogUnitySettings(string when) {
+            Log.Warn($"[X2LoadProfiler] UnitySettings {when} backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}");
         }
 
         private static void ApplyBundleCap(Mod mod) {
@@ -96,6 +101,12 @@ namespace X2LoadProfiler {
             if (settings.AsyncUploadPersistentBuffer != null) {
                 QualitySettings.asyncUploadPersistentBuffer = settings.AsyncUploadPersistentBuffer.Value;
             }
+            if (settings.VSyncCount != null) {
+                QualitySettings.vSyncCount = settings.VSyncCount.Value;
+            }
+            if (settings.TargetFrameRate != null) {
+                Application.targetFrameRate = settings.TargetFrameRate.Value;
+            }
             Log.Warn($"[X2LoadProfiler] Experiment applied from {path}: {settings.Describe()}");
         }
 
@@ -103,13 +114,17 @@ namespace X2LoadProfiler {
             Log.Warn("[X2LoadProfiler] Destroyed");
         }
 
-        public void OnWorldCreate(IModLifecycle.Section section, WeakReference<World> world) { }
+        public void OnWorldCreate(IModLifecycle.Section section, WeakReference<World> world) {
+            LogUnitySettings($"WorldCreate({section})");
+        }
 
         public IEnumerable<Descriptor> GetRequiredAssets(IModLifecycle.Section section) {
             return Enumerable.Empty<Descriptor>();
         }
 
-        public void OnWorldDispose(IModLifecycle.Section section, WeakReference<World> world) { }
+        public void OnWorldDispose(IModLifecycle.Section section, WeakReference<World> world) {
+            LogUnitySettings($"WorldDispose({section})");
+        }
     }
 
 }

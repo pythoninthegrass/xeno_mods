@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace X2LoadProfiler {
 
-    // Tab-separated records for the per-bundle-load capture; L lines are loads (last two columns: time from the first nonzero progress reading to done and that first reading, - if progress stayed 0 until done), U lines are unloads
+    // Tab-separated records for the per-bundle-load capture; L lines are loads (last two columns: time from the first nonzero progress reading to done and that first reading, - if progress stayed 0 until done), U lines are unloads, R lines are first reads
     public static class BundleRecord {
 
         private const string TimeFormat = "yyyy-MM-dd HH:mm:ss.fff";
@@ -18,6 +18,11 @@ namespace X2LoadProfiler {
 
         public static string UnloadLine(DateTime at, string? type, string? path) {
             return string.Join("\t", "U", at.ToString(TimeFormat, CultureInfo.InvariantCulture), Field(type), Field(path));
+        }
+
+        // First read (ContentManager.Get) of an asset since it was loaded
+        public static string ReadLine(DateTime at, string? type, string? path) {
+            return string.Join("\t", "R", at.ToString(TimeFormat, CultureInfo.InvariantCulture), Field(type), Field(path));
         }
 
         private static string Field(string? value) {

@@ -177,5 +177,39 @@ class PredictorTests(unittest.TestCase):
         self.assertEqual(set(rows), {">=1 MB", "<64 KB", "unknown"})
 
 
+def read(at, path, kind="Template"):
+    return f"R\t2026-10-05 18:00:{at}\t{kind}\t{path}"
+
+
+class ReadTraceTests(unittest.TestCase):
+    def test_reads_parse_and_other_rows_are_ignored(self):
+        reads = ab.parse_reads("\n".join([read("10.500", "a"), unload("11.000", "T", "a"), "R\tbad"]))
+        self.assertEqual([r.path for r in reads], ["a"])
+        self.assertEqual(reads[0].at.second, 10)
+
+    def test_a_load_with_a_read_after_it_finished_is_used(self):
+        loads, _ = ab.parse_tsv(load(1, "10.000", "0.0", "5.0", "Template", "a"))
+        self.assertEqual(
+            ab.unread_loads(loads, ab.parse_reads(read("10.500", "a")), cutoff=ab.parse_time("2026-10-05 18:00:20.000")), []
+        )
+
+    def test_a_load_with_no_read_is_unread(self):
+        loads, _ = ab.parse_tsv(
+            load(1, "10.000", "0.0", "5.0", "Template", "a") + "\n" + load(2, "10.100", "0.0", "5.0", "Template", "b")
+        )
+        unread = ab.unread_loads(loads, ab.parse_reads(read("10.500", "a")), cutoff=ab.parse_time("2026-10-05 18:00:20.000"))
+        self.assertEqual([x.path for x in unread], ["b"])
+
+    def test_a_read_after_the_cutoff_does_not_count(self):
+        loads, _ = ab.parse_tsv(load(1, "10.000", "0.0", "5.0", "Template", "a"))
+        unread = ab.unread_loads(loads, ab.parse_reads(read("30.000", "a")), cutoff=ab.parse_time("2026-10-05 18:00:20.000"))
+        self.assertEqual(len(unread), 1)
+
+    def test_a_read_before_the_load_finished_does_not_count_for_a_reload(self):
+        loads, _ = ab.parse_tsv(load(1, "10.000", "0.0", "5.0", "Template", "a"))
+        unread = ab.unread_loads(loads, ab.parse_reads(read("09.000", "a")), cutoff=ab.parse_time("2026-10-05 18:00:20.000"))
+        self.assertEqual(len(unread), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

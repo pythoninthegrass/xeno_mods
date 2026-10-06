@@ -23,6 +23,7 @@ namespace X2LoadProfiler {
             patcher.Patch(AccessTools.Constructor(typeof(LoadTask), LoadTaskCtor), postfix: Method(typeof(CaptureLoadTaskPatch), "Postfix"));
             patcher.Patch(AccessTools.Constructor(typeof(AssetBundleFileLoadOperation), BundleOperationCtor), postfix: Method(typeof(CaptureRequestPatch), "Postfix"));
             patcher.Patch(AccessTools.Method(typeof(ContentManager), "InternalUnload"), Method(typeof(CaptureUnloadPatch), "Prefix"));
+            patcher.Patch(AccessTools.Method(typeof(ContentManager), "InternalGet"), Method(typeof(CaptureReadPatch), "Prefix"));
         }
 
         public static void ApplyAutoLoad(Harmony patcher) {

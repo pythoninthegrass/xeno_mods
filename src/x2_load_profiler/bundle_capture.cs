@@ -19,6 +19,8 @@ namespace X2LoadProfiler {
 
         public static readonly Dictionary<AssetBundleFileLoadOperation, long> RequestTimes = new Dictionary<AssetBundleFileLoadOperation, long>();
 
+        public static readonly FirstReadTracker<Descriptor> Reads = new FirstReadTracker<Descriptor>();
+
         private static readonly StringBuilder Pending = new StringBuilder();
         private static int _sequence;
 
@@ -78,7 +80,18 @@ namespace X2LoadProfiler {
         [HarmonyPrefix]
         public static void Prefix(Descriptor descriptor) {
             if (BundleCapture.Enabled && descriptor != null) {
+                BundleCapture.Reads.Release(descriptor);
                 BundleCapture.Add(BundleRecord.UnloadLine(DateTime.Now, descriptor.Type?.Name, descriptor.FileHandle?.RelativePath));
+            }
+        }
+    }
+
+    public static class CaptureReadPatch {
+
+        [HarmonyPrefix]
+        public static void Prefix(Descriptor descriptor) {
+            if (BundleCapture.Enabled && descriptor != null && BundleCapture.Reads.Read(descriptor)) {
+                BundleCapture.Add(BundleRecord.ReadLine(DateTime.Now, descriptor.Type?.Name, descriptor.FileHandle?.RelativePath));
             }
         }
     }

@@ -347,6 +347,14 @@ The difference is 0.01 s, well inside the 0.1 to 0.2 s spread of a pair. The saf
 
 Operational note: killing the game after a failed load makes the next launch open a "Crash Report" dialog over the main menu, which blocks the auto-load (`no 'Queued LoadGameCommand' line appeared`). Close it through the KVM before rerunning.
 
+### Read trace for deferring the strategy first loads
+
+With the capture on, `CaptureReadPatch` (a prefix on the private `ContentManager.InternalGet`) writes an `R` line the first time the game calls `Get` on an asset after each load; unloading an asset resets it (`FirstReadTracker`, 3 tests). `scripts/analyze_bundles.py` lists the pre-setup loads with no read between the load finishing and the end of the capture (`unread_loads`, 5 tests). Run 94 (cold, cap 200, profiler and capture on, raw data `docs/diagnosis/run94-readtrace-*`) covers the load, the setup and the idle time until the run stops at playable.
+
+Only 1340 reads were logged for the 8808 loads, and 4921 of the 5497 pre-setup loads (90%) were never read through `Get`. That includes 586 ground combat audio loads, 518 ground combat prefab loads and 260 ground combat map loads for content the mission needs. The game reaches most of its content by another route (the processed assets are registered with their own managers, and `AssetReference` caches the resolved object), so a missing `Get` is not evidence that an asset is unused. By the same measure 880 strategy template loads, 445 strategy texture loads and 314 strategy data loads look unread, and no deferral can be justified from this. The trace does not supply the evidence that deferring the 481 strategy first loads needs.
+
+Ceiling estimate: the main thread spends 3.9 s on 5497 loads at cap 200, about 0.7 ms per load, so removing 481 loads would save about 0.3 s at most, against a pair spread of 0.1 to 0.2 s and the risk that a skipped asset fails the whole load (`STRICT MODE ERROR`, see above). That is consistent with the keep variant: 121 fewer loads moved the time by 0.01 s. Decision: the deferral class is not implemented, and no class from this task is kept. The remaining option, keeping templates, needs the reference graph, and its ceiling on this host is also 2 to 3 s at most.
+
 ## GOG against Steam on the Linux host (TASK-011.01)
 
 Cold auto-load runs of the same baseline save (`auto_groundcombat_turn_10_start-62.json`), shipping log level, profiler off, same mods, one at a time on the same host. Steam runs the game under Proton (Flatpak Steam); GOG runs it under the Wine bundled in the Minigalaxy Flatpak. Errors 5 and state-loss 10 per load in every run, on both builds.

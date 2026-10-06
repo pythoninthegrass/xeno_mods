@@ -16,7 +16,7 @@ Args:
 
 Note:
     Splits the capture into the startup, cold and warm loads, classifies each load by asset kind and scope,
-    flags duplicates and load/release churn, and prints markdown tables. See docs/load-time-report.md.
+    flags duplicates and load/release churn, and prints markdown tables. With R lines in the capture it also lists the pre-setup loads that were never read afterwards. See docs/load-time-report.md.
 """
 
 import argparse
@@ -56,6 +56,13 @@ class Unload:
 
 
 @dataclass(frozen=True)
+class Read:
+    at: datetime
+    type: str
+    path: str
+
+
+@dataclass(frozen=True)
 class BundleInfo:
     size: int
     compression: str
@@ -86,6 +93,28 @@ class ClassRow:
     count: int
     est_seconds: float
     latency_seconds: float
+
+
+def parse_time(text: str) -> datetime:
+    return datetime.strptime(text, TIME_FORMAT)
+
+
+def parse_reads(text: str) -> list[Read]:
+    """First reads of a loaded asset (R lines): when the game first called Get on it after each load."""
+    reads = []
+    for line in text.splitlines():
+        cols = line.split("\t")
+        if cols[0] == "R" and len(cols) == 4:
+            reads.append(Read(parse_time(cols[1]), cols[2], cols[3]))
+    return reads
+
+
+def unread_loads(loads: list[Load], reads: list[Read], cutoff: datetime) -> list[Load]:
+    """Loads whose asset was not read between the load finishing and the cutoff."""
+    read_times: defaultdict[str, list[datetime]] = defaultdict(list)
+    for r in reads:
+        read_times[r.path].append(r.at)
+    return [x for x in loads if not any(x.done <= t <= cutoff for t in read_times[x.path])]
 
 
 def parse_tsv(text: str) -> tuple[list[Load], list[Unload]]:
@@ -265,6 +294,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
 
     loads, unloads = parse_tsv(args.tsv.read_text())
+    reads = parse_reads(args.tsv.read_text())
     entries = run.parse_markers(args.markers.read_text())
     queued = [e.ts for e in entries if run.QUEUED_MARKER in e.message]
     windows = split_windows(loads, unloads, queued)
@@ -280,6 +310,10 @@ def main(argv: list[str]) -> int:
             if setup is not None:
                 before = until(window, setup)
                 print(describe(f"{name}, before setup", before))
+                if reads:
+                    unread = unread_loads(before.loads, reads, max(r.at for r in reads))
+                    print(f"Loads before setup never read afterwards in this capture ({len(unread)} of {len(before.loads)}):")
+                    print(markdown_table(summarize(Window(unread, []))))
                 if args.bundle_dir:
                     infos = read_bundle_infos(args.bundle_dir, {x.bundle for x in before.loads})
                     tables = [

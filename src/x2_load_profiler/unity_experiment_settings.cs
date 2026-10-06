@@ -29,6 +29,11 @@ namespace X2LoadProfiler {
             return s;
         }
 
+        // The value a setter should store: the experiment's when one is set, otherwise what the game asked for
+        public static T Resolve<T>(T requested, T? forced) where T : struct {
+            return forced ?? requested;
+        }
+
         public string Describe() {
             var parts = new List<string>();
             if (BackgroundLoadingPriority != null) {

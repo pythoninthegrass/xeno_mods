@@ -278,12 +278,28 @@ class ConfigTests(unittest.TestCase):
             Path("/b/users/crossover/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2"),
         )
 
-    def test_menu_points_default_to_the_spike_coordinates(self):
+    def test_macos_menu_points_default_to_the_2560x1440_coordinates(self):
         with tempfile.TemporaryDirectory() as d:
-            s = run.load_settings(Path(d), env={})
+            s = run.load_settings(Path(d), env={}, platform="darwin")
         self.assertEqual(s.menu_load_game, (1331, 1302))
         self.assertEqual(s.menu_save_row, (947, 426))
         self.assertEqual(s.menu_load_save, (960, 1112))
+        self.assertEqual(s.game_menu_button, (54, 54))
+        self.assertEqual(s.game_menu_load_game, (1280, 760))
+        self.assertEqual(s.game_menu_save_row, (896, 426))
+
+    def test_linux_menu_points_default_to_the_1920x1080_coordinates(self):
+        for build in ("steam", "gog"):
+            s = settings("linux", {"BUILD": build})
+            self.assertEqual(s.menu_load_game, (984, 976))
+            self.assertEqual(s.menu_save_row, (700, 402))
+            self.assertEqual(s.menu_load_save, (720, 834))
+            self.assertEqual(s.game_menu_button, (40, 40))
+            self.assertEqual(s.game_menu_load_game, (960, 570))
+            self.assertEqual(s.game_menu_save_row, (700, 402))
+
+    def test_menu_points_can_be_overridden(self):
+        self.assertEqual(settings("linux", {"MENU_LOAD_GAME": "1,2"}).menu_load_game, (1, 2))
 
 
 def settings(platform: str, env: dict[str, str] | None = None) -> "run.Settings":
@@ -315,7 +331,7 @@ class PlatformDefaultsTests(unittest.TestCase):
 
     def test_steam_console_log_is_outside_the_prefix_on_linux(self):
         s = settings("linux", {"BOTTLE": "/b"})
-        self.assertEqual(s.steam_console_log, Path("~/.steam/steam/logs/console_log.txt").expanduser())
+        self.assertEqual(s.steam_console_log, Path("/media/steam/logs/console-linux.txt"))
 
     def test_steam_console_log_can_be_overridden(self):
         s = settings("linux", {"STEAM_CONSOLE_LOG": "/tmp/c.txt"})
@@ -323,7 +339,7 @@ class PlatformDefaultsTests(unittest.TestCase):
 
     def test_bottle_defaults_to_the_crossover_bottle_or_the_proton_prefix(self):
         self.assertTrue(str(settings("darwin").bottle).endswith("CrossOver/Bottles/Steam/drive_c"))
-        self.assertTrue(str(settings("linux").bottle).endswith("steamapps/compatdata/538030/pfx/drive_c"))
+        self.assertEqual(settings("linux").bottle, Path("/media/steam/steamapps/compatdata/538030/pfx/drive_c"))
 
     def test_game_dir_is_inside_the_bottle_on_macos_and_outside_the_prefix_on_linux(self):
         self.assertEqual(
@@ -332,7 +348,7 @@ class PlatformDefaultsTests(unittest.TestCase):
         )
         self.assertEqual(
             settings("linux", {"BOTTLE": "/b"}).game_dir,
-            Path("~/.steam/steam/steamapps/common/Xenonauts2").expanduser(),
+            Path("/media/steam/steamapps/common/Xenonauts2"),
         )
 
     def test_bottle_token_expands_in_a_configured_path(self):
@@ -349,7 +365,7 @@ class PlatformDefaultsTests(unittest.TestCase):
 
     def test_launch_cmd_defaults_to_the_launcher_of_each_platform(self):
         self.assertEqual(settings("darwin").launch_cmd, ("open", "{app}"))
-        self.assertEqual(settings("linux").launch_cmd, ("steam", "steam://rungameid/538030"))
+        self.assertEqual(settings("linux").launch_cmd, FLATPAK_STEAM_LAUNCH)
 
     def test_click_cmd_defaults_to_the_clicker_of_each_platform(self):
         self.assertEqual(settings("darwin").click_cmd[:4], ("osascript", "-l", "JavaScript", "-e"))
@@ -369,7 +385,7 @@ class CommandTemplateTests(unittest.TestCase):
         self.assertEqual(run.launch_command(s), ["open", "/A/Xenonauts 2.app"])
 
     def test_launch_command_on_linux_goes_straight_to_the_steam_app_id(self):
-        self.assertEqual(run.launch_command(settings("linux")), ["steam", "steam://rungameid/538030"])
+        self.assertEqual(run.launch_command(settings("linux")), list(FLATPAK_STEAM_LAUNCH))
 
     def test_click_command_fills_in_the_coordinates(self):
         self.assertEqual(
@@ -395,6 +411,7 @@ class CommandTemplateTests(unittest.TestCase):
         self.assertEqual(run.launch_command(s), ["flatpak", "run", "com.valvesoftware.Steam", "steam://rungameid/1"])
 
 
+FLATPAK_STEAM_LAUNCH = ("flatpak", "run", "com.valvesoftware.Steam", "steam://rungameid/538030")
 GOG_WINEPREFIX = "WINEPREFIX=/run/user/1000/doc/5cf27610/gog/Xenonauts 2/prefix"
 
 
@@ -460,7 +477,7 @@ class BuildTests(unittest.TestCase):
 
     def test_gog_overrides_do_not_leak_into_the_steam_build(self):
         s = settings("linux", {"GOG_BOTTLE": "/gog", "GOG_LAUNCH_CMD": "true"})
-        self.assertEqual(run.launch_command(s), ["steam", "steam://rungameid/538030"])
+        self.assertEqual(run.launch_command(s), list(FLATPAK_STEAM_LAUNCH))
 
     def test_gog_shares_the_generic_settings(self):
         s = settings("linux", {"BUILD": "gog", "LOAD_TIMEOUT": "9", "MENU_LOAD_GAME": "1,2"})

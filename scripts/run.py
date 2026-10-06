@@ -39,18 +39,19 @@ from pathlib import Path
 STEAM_APP_ID = "538030"
 
 DEFAULT_MACOS_BOTTLE = "~/Library/Application Support/CrossOver/Bottles/Steam/drive_c"
-DEFAULT_LINUX_BOTTLE = f"~/.steam/steam/steamapps/compatdata/{STEAM_APP_ID}/pfx/drive_c"
+DEFAULT_LINUX_STEAM_ROOT = "/media/steam"
+DEFAULT_LINUX_BOTTLE = f"{DEFAULT_LINUX_STEAM_ROOT}/steamapps/compatdata/{STEAM_APP_ID}/pfx/drive_c"
 DEFAULT_MACOS_LAUNCHER_APP = "~/Applications/CrossOver/Steam/Xenonauts 2.app"
 DEFAULT_MACOS_GAME_DIR = "{bottle}/Program Files (x86)/Steam/steamapps/common/Xenonauts2"
-DEFAULT_LINUX_GAME_DIR = "~/.steam/steam/steamapps/common/Xenonauts2"
+DEFAULT_LINUX_GAME_DIR = f"{DEFAULT_LINUX_STEAM_ROOT}/steamapps/common/Xenonauts2"
 DEFAULT_MACOS_WINE_USER = "crossover"
 DEFAULT_LINUX_WINE_USER = "steamuser"
 DEFAULT_MACOS_STEAM_CONSOLE_LOG = "{bottle}/Program Files (x86)/Steam/logs/console_log.txt"
-DEFAULT_LINUX_STEAM_CONSOLE_LOG = "~/.steam/steam/logs/console_log.txt"
+DEFAULT_LINUX_STEAM_CONSOLE_LOG = f"{DEFAULT_LINUX_STEAM_ROOT}/logs/console-linux.txt"
 DEFAULT_MACOS_STEAM_PROCESS_PATTERN = "[s]team.exe"
 DEFAULT_LINUX_STEAM_PROCESS_PATTERN = "[s]teamwebhelper"
 DEFAULT_MACOS_LAUNCH_CMD = ("open", "{app}")
-DEFAULT_LINUX_LAUNCH_CMD = ("steam", f"steam://rungameid/{STEAM_APP_ID}")
+DEFAULT_LINUX_LAUNCH_CMD = ("flatpak", "run", "com.valvesoftware.Steam", f"steam://rungameid/{STEAM_APP_ID}")
 
 JXA_CLICK = """
 ObjC.import('CoreGraphics');
@@ -133,6 +134,22 @@ class RunError(Exception):
 
 
 @dataclass(frozen=True)
+class MenuPoints:
+    """Screen click points for --load menu and --warm-loads; they depend on the display, so they are per platform."""
+
+    menu_load_game: str
+    menu_save_row: str
+    menu_load_save: str
+    game_menu_button: str
+    game_menu_load_game: str
+    game_menu_save_row: str
+
+
+MACOS_2560X1440_POINTS = MenuPoints("1331,1302", "947,426", "960,1112", "54,54", "1280,760", "896,426")
+LINUX_1920X1080_POINTS = MenuPoints("984,976", "700,402", "720,834", "40,40", "960,570", "700,402")
+
+
+@dataclass(frozen=True)
 class PlatformDefaults:
     """The built-in defaults that differ between the CrossOver host and the Proton host."""
 
@@ -147,6 +164,7 @@ class PlatformDefaults:
     click_cmd: tuple[str, ...]
     move_cmd: tuple[str, ...] | None
     """Moves the pointer off the HUD after a click; None where clicks leave it alone."""
+    menu_points: "MenuPoints"
 
 
 PLATFORM_DEFAULTS = {
@@ -160,6 +178,7 @@ PLATFORM_DEFAULTS = {
         launch_cmd=DEFAULT_MACOS_LAUNCH_CMD,
         click_cmd=DEFAULT_MACOS_CLICK_CMD,
         move_cmd=None,
+        menu_points=MACOS_2560X1440_POINTS,
     ),
     "linux": PlatformDefaults(
         wine_user=DEFAULT_LINUX_WINE_USER,
@@ -171,6 +190,7 @@ PLATFORM_DEFAULTS = {
         launch_cmd=DEFAULT_LINUX_LAUNCH_CMD,
         click_cmd=DEFAULT_LINUX_CLICK_CMD,
         move_cmd=DEFAULT_LINUX_MOVE_CMD,
+        menu_points=LINUX_1920X1080_POINTS,
     ),
 }
 
@@ -505,12 +525,12 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str
         save_rel=config("SAVE_REL", default=DEFAULT_SAVE_REL),
         launch_timeout=config("LAUNCH_TIMEOUT", default=60, cast=int),
         load_timeout=config("LOAD_TIMEOUT", default=120, cast=int),
-        menu_load_game=parse_point(config("MENU_LOAD_GAME", default="1331,1302")),
-        menu_save_row=parse_point(config("MENU_SAVE_ROW", default="947,426")),
-        menu_load_save=parse_point(config("MENU_LOAD_SAVE", default="960,1112")),
-        game_menu_button=parse_point(config("GAME_MENU_BUTTON", default="54,54")),
-        game_menu_load_game=parse_point(config("GAME_MENU_LOAD_GAME", default="1280,760")),
-        game_menu_save_row=parse_point(config("GAME_MENU_SAVE_ROW", default="896,426")),
+        menu_load_game=parse_point(config("MENU_LOAD_GAME", default=d.menu_points.menu_load_game)),
+        menu_save_row=parse_point(config("MENU_SAVE_ROW", default=d.menu_points.menu_save_row)),
+        menu_load_save=parse_point(config("MENU_LOAD_SAVE", default=d.menu_points.menu_load_save)),
+        game_menu_button=parse_point(config("GAME_MENU_BUTTON", default=d.menu_points.game_menu_button)),
+        game_menu_load_game=parse_point(config("GAME_MENU_LOAD_GAME", default=d.menu_points.game_menu_load_game)),
+        game_menu_save_row=parse_point(config("GAME_MENU_SAVE_ROW", default=d.menu_points.game_menu_save_row)),
         mod_name=config("MOD_NAME", default=DEFAULT_MOD_NAME),
         timing_mod_name=config("TIMING_MOD_NAME", default=DEFAULT_TIMING_MOD_NAME),
         leftover_archive_prefix=config("LEFTOVER_ARCHIVE_PREFIX", default=DEFAULT_LEFTOVER_ARCHIVE_PREFIX),

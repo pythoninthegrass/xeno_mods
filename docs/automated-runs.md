@@ -47,7 +47,7 @@ These are the macOS preconditions. Linux has its own list under [Linux and Proto
 
 ## Desktop takeover and permissions
 
-Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default, which is the macOS display; see the GOG section for the 1920x1080 points).
+Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default on macOS, 1920x1080 on Linux; see the GOG section for the table).
 
 On macOS, menu mode needs these permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand. Linux needs no equivalent, because `xdotool` posts the events through XTEST.
 
@@ -55,29 +55,23 @@ On macOS, menu mode needs these permissions granted to the terminal that runs th
 
 On Linux the game runs under Proton rather than CrossOver, directly on the host (not in a container), and the script runs on the same host. The reference setup is an AlmaLinux workstation with a KDE Plasma Wayland session, Flatpak Steam (`com.valvesoftware.Steam`) with its library on a separate mount, and an optional GOG copy (see [GOG build and KDE Wayland](#gog-build-and-kde-wayland)). Everything the script touches lives on that host: the game process, the Proton prefix, `Logs/output.log`, the mod folder and the display.
 
-What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAULTS`:
+What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAULTS`. The Linux defaults match the reference host: Flatpak Steam with its library at `/media/steam`.
 
 | Setting | macOS | Linux built-in default |
 | --- | --- | --- |
-| `BOTTLE` | the CrossOver bottle's `drive_c` | `~/.steam/steam/steamapps/compatdata/538030/pfx/drive_c` |
-| `GAME_DIR` | inside the bottle | `~/.steam/steam/steamapps/common/Xenonauts2`, outside the prefix |
+| `BOTTLE` | the CrossOver bottle's `drive_c` | `/media/steam/steamapps/compatdata/538030/pfx/drive_c` |
+| `GAME_DIR` | inside the bottle | `/media/steam/steamapps/common/Xenonauts2`, outside the prefix |
 | `WINE_USER` | `crossover` | `steamuser` |
 | `LAUNCHER_APP` | the CrossOver app bundle | unset; there is no app bundle |
-| `LAUNCH_CMD` | `open {app}` | `steam steam://rungameid/538030` |
+| `LAUNCH_CMD` | `open {app}` | `flatpak run com.valvesoftware.Steam steam://rungameid/538030` |
 | `CLICK_CMD` | an inline `osascript -l JavaScript` program | `xdotool mousemove {x} {y} click 1` |
-| `STEAM_CONSOLE_LOG` | inside the bottle | `~/.steam/steam/logs/console_log.txt` |
+| `STEAM_CONSOLE_LOG` | inside the bottle | `/media/steam/logs/console-linux.txt` |
 | `STEAM_PROCESS_PATTERN` | `[s]team.exe` | `[s]teamwebhelper` |
+| click points | 2560x1440 | 1920x1080 (see [Clicks on Wayland](#clicks-on-wayland)) |
 
-The Linux defaults assume a native Steam under `~/.steam`. The reference host uses Flatpak Steam with its library on another mount, so it overrides four keys in the gitignored `.env`:
+A native Steam under `~/.steam` (or a different library mount) needs `BOTTLE`, `GAME_DIR`, `STEAM_CONSOLE_LOG` and `LAUNCH_CMD` set in the gitignored `.env`, for example `BOTTLE=~/.steam/steam/steamapps/compatdata/538030/pfx/drive_c`, `GAME_DIR=~/.steam/steam/steamapps/common/Xenonauts2`, `STEAM_CONSOLE_LOG=~/.steam/steam/logs/console_log.txt` and `LAUNCH_CMD=steam steam://rungameid/538030`.
 
-| Key | Reference host value |
-| --- | --- |
-| `BOTTLE` | `<steam-library>/steamapps/compatdata/538030/pfx/drive_c` |
-| `GAME_DIR` | `<steam-library>/steamapps/common/Xenonauts2` |
-| `STEAM_CONSOLE_LOG` | `<steam-library>/logs/console-linux.txt` |
-| `LAUNCH_CMD` | `flatpak run com.valvesoftware.Steam steam://rungameid/538030` |
-
-`WINE_USER`, `STEAM_PROCESS_PATTERN` and the derived `DATA_DIR` are right as they are. `LAUNCH_CMD` and `CLICK_CMD` are shell-quoted command lines. `{app}` is replaced with `LAUNCHER_APP`, and `{x}` and `{y}` with the click point; the replacement is literal, so braces elsewhere in the command survive. `{bottle}` expands to `BOTTLE` in any path setting.
+`LAUNCH_CMD` and `CLICK_CMD` are shell-quoted command lines. `{app}` is replaced with `LAUNCHER_APP`, and `{x}` and `{y}` with the click point; the replacement is literal, so braces elsewhere in the command survive. `{bottle}` expands to `BOTTLE` in any path setting.
 
 Run it from a terminal inside the desktop session, or point the shell at the session:
 
@@ -95,8 +89,6 @@ Linux preconditions:
 - A click tool matching the session is installed: `xdotool` on X11, `ydotool` on Wayland (see [Clicks on Wayland](#clicks-on-wayland)). Auto mode needs none.
 - `uv` is installed, for the script's shebang.
 - The mods are built into the Steam mod folder: `Directory.Build.local.props` in `src/x2_load_profiler` and `src/x2_load_timing` (gitignored) points `ModInstanceFolder` at it.
-
-The click coordinates default to the 2560x1440 macOS values. A 1920x1080 display needs all six points set in `.env`; the calibrated values are under [Clicks on Wayland](#clicks-on-wayland).
 
 ## GOG build and KDE Wayland
 
@@ -142,7 +134,7 @@ Preconditions:
 
 After every click the pointer is moved to `PARK_POINT` (default `1900,540`, empty right-hand edge) through `MOVE_CMD`, so no tooltip stays open over the HUD and no element keeps the focus. `MOVE_CMD` is unset on macOS and on Steam/Linux, which behave as before.
 
-Click points are screen pixels of a 1920x1080 display and depend on the display and the game's UI scale. The points calibrated for the reference host (from screenshots of the main menu, the load list and the in-game menu) are:
+Click points are screen pixels and depend on the display and the game's UI scale. The macOS defaults are 2560x1440 points; the Linux defaults (both builds) are the 1920x1080 points calibrated for the reference host (from screenshots of the main menu, the load list and the in-game menu) are:
 
 | Setting | Point | Element |
 | --- | --- | --- |

@@ -277,7 +277,34 @@ Findings:
 3. **The extra time is main-thread work outside `UpdateTasks`.** Main-thread CPU rises from 3.9 s to 15.4 s for the same loads, while the game's own polling stays at 1.8 to 2.0 s. The 11.7 s difference is not the managed polling this task's parent suspected. By elimination it is engine-side work on the main thread that grows with the number of in-flight requests (integrating finished loads and servicing the queue); `/proc` cannot name the function, and the capture cannot separate it further.
 4. **Cap 200 is not shown to be optimal.** At cap 200 neither the main thread (66%) nor the deserialize thread (41%) is saturated, and loads wait up to 4.4 s for a slot, so a higher cap below the point where the main-thread overhead appears may help. Only 25 (macOS), 200 and unlimited have been measured. This is the cap sweep of TASK-010.05.
 
-Not done: a per-load split inside `LoadAssetAsync` (the `AssetBundleRequest.progress` experiment), and bundle size and compression as predictors, because loads are single assets read from resident bundles and the capture carries no per-load file size.
+### Bundle properties against slow loads
+
+`scripts/analyze_bundles.py --bundle-dir <Assets/xenonauts/assetbundle/windows>` joins each load's bundle to its file size and its UnityFS header compression, and counts loads of at least 300 ms start-to-done (slow) against faster ones in the pre-setup window of the cold load. All 323 bundles have the same header compression (LZ4HC), so compression cannot separate fast from slow. Size and type do so only weakly.
+
+| Bundle size (cap 200, run 90, 5497 loads) | Slow | Fast | Slow share |
+| --- | --- | --- | --- |
+| 1 MB or larger | 615 | 2774 | 18% |
+| 64 KB to 1 MB | 255 | 1798 | 12% |
+| under 64 KB | 0 | 55 | 0% |
+
+By asset type with cap 200, the slow share is 21% for AudioClip and Sprite, 19% for Template and 12% for GameObject. Types that are almost always small (MapMeta, NationalityProfile, ITemplateProducer, List) are never slow. With no cap (run 89) the same tables read 98% slow in every size bucket above 64 KB and for every large type, with a mean of about 5 s whatever the size, so queue depth, not the bundle's size or type, sets the latency there.
+
+Conclusion: size is a mild predictor under the shipped cap (larger bundles slow more often) and not at all without it. Per-load file size does not explain the plateau.
+
+### Per-load split from `AssetBundleRequest.progress`
+
+The capture's L lines now end with two columns: the time from the first frame where `AssetBundleFileLoadOperation.Progress()` read above zero to the frame where the load was done, and the value of that first reading (`-` when progress stayed 0 until done). `BundleUpdatePatch` samples it each frame for every unfinished load while the capture is on. Run 93 (cold, profiler and capture on, cap 200, raw data `docs/diagnosis/run93-progress-*`) covers all 8808 loads of the session.
+
+Progress is not a gradual value. In 3155 of the 3271 loads that showed any, the first nonzero reading was exactly 1.0 while `isDone` was still false: the worker threads had finished reading, decompressing and deserializing, and the load was waiting for the main thread to integrate it. The other 5537 loads went from 0 to done between two frames, so their wait after the worker threads finished is shorter than one frame (about 30 ms at the 35 frames per second measured earlier).
+
+| Loads | Count | With a progress reading | Mean start-to-done | Mean progress to done (those with a reading) |
+| --- | --- | --- | --- | --- |
+| Under 300 ms | 6264 | 32% | 134 ms | 109 ms |
+| 300 ms or more | 2544 | 49% | 515 ms | 268 ms |
+
+For loads with a reading, 56% of the start-to-done time of the fast loads and 53% of the slow loads is spent after the worker threads are finished, waiting for main-thread integration. That agrees with the thread split above (main-thread CPU grows with loads in flight, the read and deserialize threads do not saturate). Together with the request-to-start wait (the cap queue), the three phases of a load are: queue wait, worker-thread read and deserialize, main-thread integration wait. Under the shipped cap the integration wait is the largest part of each slow load.
+
+Limits: readings are per frame, so integration waits under one frame are not seen, and the reading adds work to every frame (the cold pre-setup window was 6.2 s against 5.9 s in run 90, and the share of loads of 300 ms or more in bundles of 1 MB or larger rose from 18% to 37%). Use this for proportions, not for speed claims.
 
 ### Cap sweep on Linux
 

@@ -9,7 +9,7 @@
 
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -38,6 +38,10 @@ TSV = "\n".join(
 
 
 class ParseTests(unittest.TestCase):
+    def test_a_load_with_the_progress_column_still_parses(self):
+        loads, _ = ab.parse_tsv(load(1, "10.000", "5.0", "100.0", "Texture2D", f"{P}/a.png") + "\t3.2")
+        self.assertEqual(len(loads), 1)
+
     def test_loads_and_unloads_are_separated_and_timed(self):
         loads, unloads = ab.parse_tsv(TSV)
         self.assertEqual(len(loads), 4)
@@ -110,6 +114,67 @@ class SummaryTests(unittest.TestCase):
         loads, unloads = ab.parse_tsv(TSV)
         rows = {r.key: r for r in ab.summarize(ab.Window(loads, unloads))}
         self.assertAlmostEqual(rows[("texture", "strategy")].latency_seconds, 0.15)
+
+
+def header(flags, size=1234):
+    return (
+        b"UnityFS\x00"
+        + (8).to_bytes(4, "big")
+        + b"5.x.x\x00"
+        + b"2022.3.62f2\x00"
+        + size.to_bytes(8, "big")
+        + (10).to_bytes(4, "big")
+        + (20).to_bytes(4, "big")
+        + flags.to_bytes(4, "big")
+    )
+
+
+class BundleHeaderTests(unittest.TestCase):
+    def test_compression_comes_from_the_low_two_flag_bits(self):
+        names = {0: "none", 1: "lzma", 2: "lz4", 3: "lz4hc"}
+        for flags, name in names.items():
+            self.assertEqual(ab.parse_bundle_header(header(flags | 0x40), 999).compression, name)
+
+    def test_size_is_the_file_size_passed_in(self):
+        self.assertEqual(ab.parse_bundle_header(header(3), 4096).size, 4096)
+
+    def test_non_unityfs_data_is_rejected(self):
+        with self.assertRaises(ValueError):
+            ab.parse_bundle_header(b"notabundle", 10)
+
+
+class PredictorTests(unittest.TestCase):
+    def setUp(self):
+        base = datetime(2026, 10, 5, 18)
+        mk = lambda seq, ms, kind, bundle: ab.Load(
+            seq, base + timedelta(milliseconds=ms), base, base, kind, "p", bundle, "x", "-"
+        )  # noqa: E731
+        self.loads = [
+            mk(1, 800, "GameObject", "big"),
+            mk(2, 600, "GameObject", "big"),
+            mk(3, 30, "Texture2D", "small"),
+            mk(4, 400, "Texture2D", "missing"),
+        ]
+        self.infos = {"big": ab.BundleInfo(5_000_000, "lz4hc"), "small": ab.BundleInfo(2_000, "lz4hc")}
+
+    def test_rows_split_loads_into_slow_and_fast_by_latency_threshold(self):
+        rows = {r.key: r for r in ab.latency_by(self.loads, lambda x, i: x.type, self.infos, slow_ms=300)}
+        self.assertEqual((rows["GameObject"].slow, rows["GameObject"].fast), (2, 0))
+        self.assertEqual((rows["Texture2D"].slow, rows["Texture2D"].fast), (1, 1))
+
+    def test_mean_latency_is_in_milliseconds(self):
+        rows = {r.key: r for r in ab.latency_by(self.loads, lambda x, i: x.type, self.infos, slow_ms=300)}
+        self.assertAlmostEqual(rows["GameObject"].mean_ms, 700.0)
+
+    def test_size_bucket_uses_the_bundle_info_and_unknown_when_missing(self):
+        self.assertEqual(ab.size_bucket(self.infos["big"]), ">=1 MB")
+        self.assertEqual(ab.size_bucket(self.infos["small"]), "<64 KB")
+        self.assertEqual(ab.size_bucket(None), "unknown")
+
+    def test_grouping_by_size_bucket(self):
+        key = lambda x, infos: ab.size_bucket(infos.get(x.bundle))  # noqa: E731
+        rows = {r.key: r for r in ab.latency_by(self.loads, key, self.infos, slow_ms=300)}
+        self.assertEqual(set(rows), {">=1 MB", "<64 KB", "unknown"})
 
 
 if __name__ == "__main__":

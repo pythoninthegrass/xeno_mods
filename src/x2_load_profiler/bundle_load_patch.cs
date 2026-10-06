@@ -15,6 +15,9 @@ namespace X2LoadProfiler {
 
         public static readonly Dictionary<AssetBundleFileLoadOperation, long> StartTimes = new Dictionary<AssetBundleFileLoadOperation, long>();
 
+        // First frame at which AssetBundleRequest.progress was above zero while the load was still running
+        public static readonly Dictionary<AssetBundleFileLoadOperation, (long Ticks, float Value)> FirstProgress = new Dictionary<AssetBundleFileLoadOperation, (long, float)>();
+
         private static readonly FieldInfo FilesLoading = AccessTools.Field(typeof(AssetBundleFileLoadOperation), "_filesLoading");
 
         // Read once per window, so the boxing cost is negligible
@@ -46,7 +49,16 @@ namespace X2LoadProfiler {
 
         [HarmonyPostfix]
         public static void Postfix(AssetBundleFileLoadOperation __instance, bool __result, Descriptor ____descriptor) {
-            if (!__result || !BundleLoadTracker.StartTimes.Remove(__instance, out long startTicks)) {
+            if (!__result) {
+                if (BundleCapture.Enabled) {
+                    float progress = __instance.Progress();
+                    if (progress > 0f) {
+                        BundleLoadTracker.FirstProgress.TryAdd(__instance, (Stopwatch.GetTimestamp(), progress));
+                    }
+                }
+                return;
+            }
+            if (!BundleLoadTracker.StartTimes.Remove(__instance, out long startTicks)) {
                 return;
             }
 
@@ -64,9 +76,15 @@ namespace X2LoadProfiler {
             double msPerTick = 1000.0 / Stopwatch.Frequency;
             double queueMs = BundleCapture.RequestTimes.Remove(op, out long requestTicks) ? (startTicks - requestTicks) * msPerTick : 0.0;
             BundleCapture.Parents.Remove(descriptor, out string? parent);
+            double? progressMs = null;
+            float? progressValue = null;
+            if (BundleLoadTracker.FirstProgress.Remove(op, out var first)) {
+                progressMs = (Stopwatch.GetTimestamp() - first.Ticks) * msPerTick;
+                progressValue = first.Value;
+            }
             var handle = descriptor.FileHandle;
             BundleCapture.Add(BundleRecord.LoadLine(BundleCapture.NextSequence(), System.DateTime.Now, queueMs, latencyTicks * msPerTick,
-                descriptor.Type?.Name, handle?.RelativePath, handle?.assetBundleName, handle?.contentPackPath, parent));
+                descriptor.Type?.Name, handle?.RelativePath, handle?.assetBundleName, handle?.contentPackPath, parent, progressMs, progressValue));
         }
     }
 

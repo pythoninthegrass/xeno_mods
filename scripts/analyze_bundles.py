@@ -20,11 +20,13 @@ Note:
 """
 
 import argparse
+import struct
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Callable
 
 import run
 
@@ -53,6 +55,25 @@ class Unload:
     path: str
 
 
+@dataclass(frozen=True)
+class BundleInfo:
+    size: int
+    compression: str
+
+
+@dataclass(frozen=True)
+class PredictorRow:
+    key: str
+    slow: int
+    fast: int
+    mean_ms: float
+
+
+COMPRESSION = {0: "none", 1: "lzma", 2: "lz4", 3: "lz4hc"}
+SIZE_BUCKETS = [(64 * 1024, "<64 KB"), (1024 * 1024, "64 KB-1 MB")]
+SLOW_MS = 300.0
+
+
 @dataclass
 class Window:
     loads: list[Load] = field(default_factory=list)
@@ -72,7 +93,7 @@ def parse_tsv(text: str) -> tuple[list[Load], list[Unload]]:
     unloads: list[Unload] = []
     for line in text.splitlines():
         cols = line.split("\t")
-        if cols[0] == "L" and len(cols) == 10:
+        if cols[0] == "L" and len(cols) in (10, 11, 12):
             done = datetime.strptime(cols[2], TIME_FORMAT)
             start = done - timedelta(milliseconds=float(cols[4]))
             request = start - timedelta(milliseconds=float(cols[3]))
@@ -80,6 +101,53 @@ def parse_tsv(text: str) -> tuple[list[Load], list[Unload]]:
         elif cols[0] == "U" and len(cols) == 4:
             unloads.append(Unload(datetime.strptime(cols[1], TIME_FORMAT), cols[2], cols[3]))
     return loads, unloads
+
+
+def parse_bundle_header(data: bytes, file_size: int) -> BundleInfo:
+    """Compression of the block table from a UnityFS header (signature, version, two version strings, size, two table sizes, flags)."""
+    if not data.startswith(b"UnityFS\x00"):
+        raise ValueError("not a UnityFS bundle")
+    pos = len(b"UnityFS\x00") + 4
+    for _ in range(2):
+        pos = data.index(b"\x00", pos) + 1
+    (flags,) = struct.unpack(">I", data[pos + 16 : pos + 20])
+    return BundleInfo(file_size, COMPRESSION[flags & 0x3])
+
+
+def read_bundle_infos(bundle_dir: Path, names: set[str]) -> dict[str, BundleInfo]:
+    infos = {}
+    for name in names:
+        path = bundle_dir / name
+        if path.is_file():
+            with path.open("rb") as f:
+                infos[name] = parse_bundle_header(f.read(256), path.stat().st_size)
+    return infos
+
+
+def size_bucket(info: BundleInfo | None) -> str:
+    if info is None:
+        return "unknown"
+    return next((label for limit, label in SIZE_BUCKETS if info.size < limit), ">=1 MB")
+
+
+def latency_by(
+    loads: list[Load], key: Callable[[Load, dict[str, BundleInfo]], str], infos: dict[str, BundleInfo], slow_ms: float = SLOW_MS
+) -> list[PredictorRow]:
+    """Per key, how many loads took at least slow_ms from start to done, and the mean start-to-done time."""
+    groups: defaultdict[str, list[float]] = defaultdict(list)
+    for x in loads:
+        groups[key(x, infos)].append((x.done - x.start).total_seconds() * 1000)
+    rows = [
+        PredictorRow(k, sum(v >= slow_ms for v in ms), sum(v < slow_ms for v in ms), sum(ms) / len(ms))
+        for k, ms in groups.items()
+    ]
+    return sorted(rows, key=lambda r: -(r.slow + r.fast))
+
+
+def predictor_table(title: str, rows: list[PredictorRow]) -> str:
+    out = [f"| {title} | Slow (>= {SLOW_MS:.0f} ms) | Fast | Mean start-to-done |", "|---|---|---|---|"]
+    out += [f"| {r.key} | {r.slow} | {r.fast} | {r.mean_ms:.0f} ms |" for r in rows]
+    return "\n".join(out)
 
 
 def classify(path: str) -> tuple[str, str]:
@@ -191,6 +259,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("markers", type=Path)
     parser.add_argument("--out-dir", type=Path, default=Path("docs/diagnosis"))
     parser.add_argument("--prefix", default="capture")
+    parser.add_argument(
+        "--bundle-dir", type=Path, help="folder with the game's bundle files; adds the size and compression predictor tables"
+    )
     args = parser.parse_args(argv)
 
     loads, unloads = parse_tsv(args.tsv.read_text())
@@ -207,7 +278,16 @@ def main(argv: list[str]) -> int:
         if i > 0:
             setup = next((e.ts for e in entries if run.SETUP_MARKER in e.message and e.ts > queued[i - 1]), None)
             if setup is not None:
-                print(describe(f"{name}, before setup", until(window, setup)))
+                before = until(window, setup)
+                print(describe(f"{name}, before setup", before))
+                if args.bundle_dir:
+                    infos = read_bundle_infos(args.bundle_dir, {x.bundle for x in before.loads})
+                    tables = [
+                        ("Bundle size", lambda x, i: size_bucket(i.get(x.bundle))),
+                        ("Compression", lambda x, i: i[x.bundle].compression if x.bundle in i else "unknown"),
+                        ("Asset type", lambda x, i: x.type),
+                    ]
+                    print("\n\n".join(predictor_table(t, latency_by(before.loads, k, infos)) for t, k in tables))
     return 0
 
 

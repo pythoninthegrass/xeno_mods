@@ -1,9 +1,11 @@
 ---
 id: TASK-011.01
 title: Run measurement runs against the GOG install on KDE Wayland
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - pythoninthegrass
 created_date: '2026-10-06 06:08'
+updated_date: '2026-10-06 06:16'
 labels:
   - load-time
   - gog
@@ -47,3 +49,23 @@ Constraints: the Steam and macOS paths must keep working unchanged. `.env` and `
 - [ ] #8 Two cold runs of the same baseline save on GOG and on Steam are recorded side by side in docs/load-time-report.md with any difference noted
 - [ ] #9 docs/automated-runs.md has a GOG and Wayland section covering preconditions and invocation, docs/gog.md points to it, and .env.example documents every new key
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+## Approach
+
+Add a `BUILD` setting (`steam` default, `gog`) to scripts/run.py. A per-build defaults table (`BUILD_DEFAULTS`, Linux only) overrides bottle, game dir, wine user, launch command and process checks for `gog`; Steam and macOS defaults stay as they are. All values remain overridable from `.env`.
+
+1. Tests first: BUILD setting parsing (default steam, invalid value rejected), GOG defaults (bottle `/media/gog/Xenonauts 2/prefix/drive_c`, game dir, wine user = login name, launch command), steam defaults unchanged for both platforms.
+2. GOG preflight: no Steam process check, no console log / cloud-sync check.
+3. Launch: GOG has no `steam://`. Establish a command-line launch by reusing Minigalaxy's own command (`env WINEPREFIX=... /app/bin/wine start /d c:\game c:\game\Xenonauts2.exe` through `flatpak run --command=env`), spawned detached so the sandbox outlives the launcher. Fail within LAUNCH_TIMEOUT if the game does not appear or is already running.
+4. Click step on Wayland: try ydotool (daemon + /dev/uinput), pointer moved off the HUD after each click; document coordinates as display-dependent.
+5. Mod install into the GOG mod folder (second local props / documented copy step).
+6. Real GOG cold run, then Steam cold run, record both in docs/load-time-report.md.
+7. docs/automated-runs.md GOG and Wayland section, docs/gog.md pointer, .env.example keys.
+
+## Stop rule
+
+If the same blocker survives three distinct fix attempts, record it in the notes and stop.
+<!-- SECTION:PLAN:END -->

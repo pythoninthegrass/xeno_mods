@@ -102,7 +102,11 @@ GOG_LAUNCH_CMD = (
     "c:\\game",
     "c:\\game\\Xenonauts2.exe",
 )
-YDOTOOL_MOVE = "ydotool mousemove --absolute -x {x} -y {y}"
+# The pointer travels twice the requested distance on this host's KDE Wayland session, hence the halving; it is display and pointer-speed dependent
+YDOTOOL_MOVE = (
+    'export YDOTOOL_SOCKET="${YDOTOOL_SOCKET:-/run/user/$(id -u)/.ydotool_socket}"; '
+    "ydotool mousemove -x -5000 -y -5000 && ydotool mousemove -x $(({x} / 2)) -y $(({y} / 2))"
+)
 GOG_CLICK_CMD = ("sh", "-c", f"{YDOTOOL_MOVE} && sleep 0.3 && ydotool click 0xC0")
 GOG_MOVE_CMD = ("sh", "-c", YDOTOOL_MOVE)
 DEFAULT_SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"

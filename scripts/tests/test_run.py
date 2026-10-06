@@ -514,13 +514,16 @@ class PointerTests(unittest.TestCase):
         argv = run.click_command(settings("linux", {"BUILD": "gog"}), (7, 9))
         self.assertEqual(argv[:2], ["sh", "-c"])
         self.assertIn("ydotool", argv[2])
-        self.assertIn("-x 7 -y 9", argv[2])
+        self.assertIn("$((7 / 2))", argv[2])
+        self.assertIn("$((9 / 2))", argv[2])
+        self.assertIn("ydotool click", argv[2])
 
     def test_gog_parks_the_pointer_off_the_hud_after_a_click(self):
         s = settings("linux", {"BUILD": "gog"})
         argv = run.park_command(s)
         self.assertIn("ydotool", argv[-1])
-        self.assertIn(f"-x {s.park_point[0]} -y {s.park_point[1]}", argv[-1])
+        self.assertIn(f"$(({s.park_point[0]} / 2))", argv[-1])
+        self.assertNotIn("ydotool click", argv[-1])
 
     def test_steam_clicks_are_unchanged_and_do_not_park(self):
         self.assertEqual(settings("linux").click_cmd, ("xdotool", "mousemove", "{x}", "{y}", "click", "1"))

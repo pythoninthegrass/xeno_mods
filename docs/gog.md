@@ -60,3 +60,7 @@ Launched Minigalaxy from the start menu command above, opened the Installed view
 The display is only reachable through the KVM (see `CLAUDE.local.md`), so the launch was driven by mouse events on the remote screen. `xdotool` is not installed.
 
 A cursor resting on a HUD item (for example Exit Game) keeps its tooltip open, and hovering many HUD items changes which element the game treats as focused. Move the pointer off the HUD before the next click or screenshot.
+
+## Automated runs
+
+`scripts/run.py` runs the GOG build unattended with `BUILD=gog`, launching through Minigalaxy's Wine command and clicking with `ydotool` on the KDE Wayland session. See [Automated cold runs](automated-runs.md#gog-build-and-kde-wayland).

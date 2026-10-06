@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - pythoninthegrass
 created_date: '2026-10-05 17:55'
-updated_date: '2026-10-05 18:03'
+updated_date: '2026-10-06 01:27'
 labels: []
 dependencies: []
 references:
@@ -105,4 +105,12 @@ What landed: PLATFORM_DEFAULTS keyed by platform, `load_settings(..., platform=s
 Verified by hand that both platform tables resolve end to end (launch argv, click argv, console log, game dir, save path) by loading settings with platform forced to each value.
 
 Still open: AC #1 (a real cold run on Linux), AC #6 (the six click points at 1920x1080) and AC #7's "whole suite passes" is true but the suite cannot cover a real run. All three are blocked on Steam login and the app 538030 install, which are the user's to do.
+
+2026-10-05, first real Linux runs. The game runs on the AlmaLinux host itself, not in a steam-headless container: Flatpak Steam (com.valvesoftware.Steam) rooted at /media/steam, game at /media/steam/steamapps/common/Xenonauts2, prefix at /media/steam/steamapps/compatdata/538030/pfx, Wine user steamuser, X display :0, Steam console log at /media/steam/logs/console-linux.txt. The plan's container assumption and the Linux built-in defaults (~/.steam/steam/..., `steam` launch command, console_log.txt) do not match this host, so a working run needs .env overrides: BOTTLE, GAME_DIR, STEAM_CONSOLE_LOG and LAUNCH_CMD=`flatpak run com.valvesoftware.Steam steam://rungameid/538030`. WINE_USER, STEAM_PROCESS_PATTERN (`[s]teamwebhelper`) and the derived DATA_DIR were right as is. Run with DISPLAY=:0.
+
+Result: `scripts/run.py` auto mode completed two cold runs on this host (run80-smoke, run81-prof): save queued and verified, playable reached, 5 [ERROR] lines, 10 state-loss matches (the shipping-level count), timings parsed from x2_load_timing markers.txt, game and flag files cleaned up, game-file hashes unchanged. Queue to playable was 18.8 s and 18.1 s, intro to setup 6.5 s and 5.9 s, against 37 to 42 s and 20 to 24 s on macOS CrossOver. 73 tests pass in test_run.py after the merge with origin/main.
+
+Still not verified: the unchanged macOS path (AC #1 second half), menu mode and --warm-loads on Linux (AC #6). xdotool is not installed on the host, and the click points are still the 2560x1440 macOS defaults for a 1920x1080 display.
+
+Follow-ups that need your decision, not made here: docs/automated-runs.md still says the script runs inside the steam-headless container and lists the container paths as the Linux defaults, which is wrong for this host; either change the Linux defaults to the Flatpak layout or document both layouts.
 <!-- SECTION:NOTES:END -->

@@ -31,10 +31,13 @@ namespace X2LoadProfiler {
 
         private const string ProfileOutputFileName = "profile.txt";
 
+        private const string AssetKeepFileName = "transfer_keep.txt";
+
         public void Create(Mod mod, Harmony patcher) {
             Log.Warn("[X2LoadProfiler] Loaded");
             AutoLoad.ConfigPath = Path.Combine(mod.ContentPack, AutoLoadFileName);
             ApplyBundleCap(mod);
+            ApplyAssetKeep(mod, patcher);
             ApplyProfiler(mod, patcher);
             if (File.Exists(AutoLoad.ConfigPath)) {
                 InstrumentationPatches.ApplyAutoLoad(patcher);
@@ -52,6 +55,15 @@ namespace X2LoadProfiler {
             string? text = File.Exists(path) ? File.ReadAllText(path) : null;
             BundleConcurrencyConfig.ModCap = BundleConcurrency.ParseCap(text, BundleConcurrency.DefaultCap);
             Log.Warn($"[X2LoadProfiler] BundleCap={BundleConcurrencyConfig.ModCap} source={(text == null ? "default" : path)}");
+        }
+
+        private static void ApplyAssetKeep(Mod mod, Harmony patcher) {
+            string path = Path.Combine(mod.ContentPack, AssetKeepFileName);
+            AssetKeepSwitch.Enabled = AssetKeepSwitch.Parse(File.Exists(path) ? File.ReadAllText(path) : null);
+            Log.Warn($"[X2LoadProfiler] AssetKeep={AssetKeepSwitch.Enabled} source={(File.Exists(path) ? path : "default")}");
+            if (AssetKeepSwitch.Enabled) {
+                patcher.Patch(AssetKeepPatch.Target, postfix: new HarmonyMethod(typeof(AssetKeepPatch), nameof(AssetKeepPatch.Postfix)));
+            }
         }
 
         private static void ApplyProfiler(Mod mod, Harmony patcher) {

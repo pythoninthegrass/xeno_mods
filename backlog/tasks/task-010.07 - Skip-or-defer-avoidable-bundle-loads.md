@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-05 15:30'
-updated_date: '2026-10-06 04:34'
+updated_date: '2026-10-06 19:57'
 labels:
   - load-time
 dependencies:
@@ -26,8 +26,8 @@ Read parent TASK-010 first. Act on the classification produced by the bundle aud
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each implemented class has tests written first for its decision logic
-- [ ] #2 Each class is measured on its own with the full protocol and kept only if it gains beyond noise
+- [x] #1 Each implemented class has tests written first for its decision logic
+- [x] #2 Each class is measured on its own with the full protocol and kept only if it gains beyond noise
 - [ ] #3 Errors and state-loss counts match the baseline, no new log errors, and the loaded game plays and saves correctly (a save made afterwards reloads)
 - [ ] #4 Returning to the strategy layer after the mission still works with deferred content, checked in game
 <!-- AC:END -->
@@ -78,4 +78,6 @@ HANDOFF for the next agent (unattempted parts). Read CLAUDE.local.md and docs/lo
 3. Validation not done (needed for any variant that gains): warm loads (run.py --warm-loads and --load menu need xdotool, missing on mf; install it or drive clicks through the KVM; .env click points still default to 2560x1440 and need 1920x1080 values; save rows are positional), a save made after the load that reloads, return to strategy after a mission, errors 5 and state-loss 10 per load.
 
 Pitfalls: decompiled sources are not kept; regenerate with ilspycmd (dotnet tool install ilspycmd --tool-path <dir>, DOTNET_ROOT=$HOME/.local/share/mise/dotnet-root, run on Assembly-CSharp.dll with -p -o <dir> -r <Managed dir>). Measure with DISPLAY=:0 scripts/run.py <name>, profiler off (remove profiler.txt), alternate arms, at least 3 cold pairs; noise is 0.1 to 0.2 s within a pair. Killing the game after a failed load makes the next launch show a Crash Report dialog that blocks the auto-load (run.py: no 'Queued LoadGameCommand' line appeared); close it through the KVM with the mouse-event recipe in CLAUDE.local.md (CLOSE was near page coordinates 952,1233). At the shipping log level the mod's Log.Warn lines are dropped; use Log.Error or a file to see patch failures. Capture TSV columns: L lines are 0 L, 1 sequence, 2 time, 3 queue ms, 4 latency ms, 5 type, 6 path; U lines are 0 U, 1 time, 2 type, 3 path (an off-by-one here cost time). Keep contentpacks.json with both mods enabled and no profiler.txt in the mod folder; restore any game file you change.
+
+2026-10-06, read trace for the strategy-scope deferral (commit 5028f48; handoff item 1 done). CaptureReadPatch (prefix on private ContentManager.InternalGet, capture only) writes R lines on the first Get per load generation; FirstReadTracker (3 tests), BundleRecord.ReadLine (1 test), unread_loads in analyze_bundles.py (5 tests). Run 94, docs/diagnosis/run94-readtrace-*: 1340 reads for 8808 loads, 4921 of 5497 pre-setup loads never read via Get, including 586 ground combat audio, 518 prefab and 260 map loads that the mission needs. Get is not how the game consumes most content, so unread is not evidence of unused, and no deferral candidate list can be derived. Ceiling for the 481 strategy first loads is about 0.3 s (0.7 ms main-thread time per load), inside pair noise, with a whole-load failure if a needed asset is skipped. Decision: deferral class not implemented. No class from this task is kept (class 1 closed earlier, no gain). Keeping templates (handoff item 2) needs the reference graph; ceiling 2 to 3 s at most on this host. AC #1 and #2 hold for the one class implemented. AC #3 and #4 (save reloads, strategy return) were not verified because no class is kept; the task is left In Progress for the owner to decide whether to waive them and close.
 <!-- SECTION:NOTES:END -->

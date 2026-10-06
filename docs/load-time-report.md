@@ -337,13 +337,15 @@ Cause not established: the two builds differ in Wine version and graphics path a
 
 ## Unity async upload and loading settings (TASK-010.04, Linux)
 
-The mod can hold Unity settings at fixed values from `unity_experiment.txt` (`asyncUploadTimeSlice`, `asyncUploadBufferSize`, `asyncUploadPersistentBuffer`, `backgroundLoadingPriority`, and since this task `vSyncCount` and `targetFrameRate`). A Harmony prefix on each Unity setter replaces whatever the game writes with the experiment value, so a setting the game rewrites during the load stays at the swept value. With the flag file `unity_settings_log.txt` in the mod folder, every setter call and every world create and dispose is traced to `unity_settings.txt` with the calling method.
+The mod can hold Unity settings at fixed values from `unity_experiment.txt` (`asyncUploadTimeSlice`, `asyncUploadBufferSize`, `asyncUploadPersistentBuffer`, `backgroundLoadingPriority`, and since this task `vSyncCount` and `targetFrameRate`). The values are applied at mod create and compared with the live Unity values once per `ContentManager.UpdateTasks` frame, and re-applied when the game has changed them. With the flag file `unity_settings_log.txt` in the mod folder, every change of any of the six values is traced to `unity_settings.txt` together with every world create and dispose.
+
+An earlier version patched the Unity property setters with Harmony instead. That version was wrong: a Harmony prefix on these setters stops the original setter from running, so no value was ever stored (the readbacks in its own trace showed the defaults), and the patch on `backgroundLoadingPriority` alone added about 1.9 s to every load. A first sweep made with it showed nothing and was discarded; everything below is from the per-frame holder, whose cost is within noise (control row).
 
 ### Does the game overwrite them
 
 Yes, two of them, on every load screen (trace of a cold auto-load run, no experiment):
 
-| Setting | At startup | `LoadScreen.OnEnter` | `LoadScreen.OnExit` |
+| Setting | At startup | During a load screen | After the load screen |
 | --- | --- | --- | --- |
 | `asyncUploadTimeSlice` | 2 | 33 | 2 |
 | `backgroundLoadingPriority` | BelowNormal | High | BelowNormal |
@@ -352,35 +354,80 @@ Yes, two of them, on every load screen (trace of a cold auto-load run, no experi
 | `vSyncCount` | 1 | never written | |
 | `targetFrameRate` | 60 | never written | |
 
-The game raises the upload time slice and the background loading priority for the duration of each load screen and restores them on exit. The cold ground-combat load passes through two load screens. This also means the earlier `backgroundLoadingPriority=High` test (set once at startup) was a no-op by construction: the game already sets High during the load. Every swept value below was applied through the setter hook and the trace confirms it was stored in place of the game's write (`requested=33 stored=66`, `requested=High stored=Low`).
+The ground-combat cold load passes through two load screens. The game raises the upload time slice and the background loading priority for the duration of each and restores them on exit. A value set once at startup is therefore overwritten before the load starts, which is why the earlier startup-only `backgroundLoadingPriority=High` test could not have changed anything. Unity clamps `asyncUploadTimeSlice` to 1 to 33 ms, so 33 is already its maximum. A forced value is held for the whole session, including outside load screens, and the trace shows the forced readback at `WorldCreate(GroundCombat)`.
 
 ### Sweep
 
-Cold auto-load runs of the baseline save on the Steam build on this host, shipping log level, profiler off, one run at a time. Baseline runs (no experiment file) were interleaved every fourth run. Errors 5 and state-loss 10 in every run. Queue to playable in seconds; "vs baseline" is the difference of means.
+Cold auto-load runs of the baseline save on the Steam build on this host, shipping log level, profiler off, no trace flag, one run at a time. Baseline and control runs were interleaved every fourth run. Errors 5 and state-loss 10 in every run. Times in seconds; "vs baseline" is the difference of means.
 
 | Condition | Runs | Queue to playable per run | Intro to setup (mean) | Queue to playable (mean) | vs baseline |
 | --- | --- | --- | --- | --- | --- |
-| baseline (game values: slice 33 and High during load) | 16 | 20.54 to 22.20, standard deviation 0.52 | 7.57 | 21.11 | 0.00 |
-| `asyncUploadTimeSlice=1` | 2 | 22.11, 21.32 | 8.23 | 21.71 | +0.60 |
-| `asyncUploadTimeSlice=8` | 2 | 21.55, 21.54 | 7.86 | 21.55 | +0.43 |
-| `asyncUploadTimeSlice=16` | 2 | 21.70, 21.67 | 8.08 | 21.69 | +0.57 |
-| `asyncUploadTimeSlice=66` | 2 | 21.04, 21.64 | 8.01 | 21.34 | +0.23 |
-| `asyncUploadBufferSize=16` | 2 | 21.90, 21.07 | 7.94 | 21.48 | +0.37 |
-| `asyncUploadBufferSize=32` | 2 | 20.66, 21.54 | 7.46 | 21.10 | -0.01 |
-| `asyncUploadBufferSize=128` | 2 | 20.86, 21.27 | 7.56 | 21.06 | -0.05 |
-| `asyncUploadBufferSize=256` | 2 | 21.42, 21.32 | 7.71 | 21.37 | +0.26 |
-| `asyncUploadPersistentBuffer=false` | 2 | 21.11, 21.28 | 7.71 | 21.20 | +0.08 |
-| `backgroundLoadingPriority=Normal` | 2 | 21.38, 21.01 | 7.70 | 21.20 | +0.08 |
-| `backgroundLoadingPriority=BelowNormal` | 2 | 21.69, 20.62 | 7.90 | 21.16 | +0.04 |
-| `backgroundLoadingPriority=Low` | 2 | 21.87, 21.01 | 7.84 | 21.44 | +0.33 |
-| `vSyncCount=0` | 2 | 20.66, 20.79 | 7.43 | 20.73 | -0.39 |
-| `vSyncCount=2` | 2 | 20.85, 20.54 | 7.28 | 20.70 | -0.42 |
-| `vSyncCount=0`, `targetFrameRate=-1` | 2 | 20.60, 20.95 | 7.41 | 20.77 | -0.34 |
-| `vSyncCount=0`, `targetFrameRate=240` | 2 | 20.62, 20.41 | 7.21 | 20.52 | -0.60 |
-| `vSyncCount=0`, `targetFrameRate=240`, second confirmation | 6 | 21.32, 20.42, 20.73, 21.34, 22.00, 21.15 | 7.79 | 21.16 | +0.05 |
+| baseline, no experiment file (game values: slice 33 and High during load screens) | 16 | 19.15 to 19.93 | 6.33 | 19.52 | +0.00 |
+| control: experiment file with the default `vSyncCount=1` (per-frame holder installed) | 5 | 19.43, 19.35, 19.46, 19.78, 19.60 | 6.35 | 19.52 | -0.00 |
+| `asyncUploadTimeSlice=1` | 2 | 19.35, 19.36 | 6.29 | 19.36 | -0.17 |
+| `asyncUploadTimeSlice=2` | 2 | 19.38, 19.27 | 6.26 | 19.32 | -0.20 |
+| `asyncUploadTimeSlice=8` | 2 | 19.41, 19.70 | 6.36 | 19.55 | +0.03 |
+| `asyncUploadTimeSlice=16` | 2 | 19.68, 19.44 | 6.39 | 19.56 | +0.04 |
+| `asyncUploadTimeSlice=33` | 2 | 19.81, 19.53 | 6.50 | 19.67 | +0.15 |
+| `asyncUploadBufferSize=16` | 2 | 20.68, 20.90 | 7.79 | 20.79 | +1.27 |
+| `asyncUploadBufferSize=32` | 2 | 19.88, 19.58 | 6.66 | 19.73 | +0.21 |
+| `asyncUploadBufferSize=128` | 2 | 19.28, 19.06 | 6.22 | 19.17 | -0.35 |
+| `asyncUploadBufferSize=256` | 2 | 19.38, 19.50 | 6.28 | 19.44 | -0.08 |
+| `asyncUploadPersistentBuffer=false` | 2 | 19.60, 19.68 | 6.30 | 19.64 | +0.12 |
+| `backgroundLoadingPriority=Normal` | 2 | 19.66, 19.41 | 6.51 | 19.54 | +0.01 |
+| `backgroundLoadingPriority=BelowNormal` | 2 | 21.30, 20.62 | 7.65 | 20.96 | +1.44 |
+| `backgroundLoadingPriority=Low` | 2 | 39.83, 37.04 | 20.77 | 38.44 | +18.91 |
+| `backgroundLoadingPriority=High` | 2 | 19.85, 19.64 | 6.33 | 19.75 | +0.22 |
+| `vSyncCount=0` | 2 | 19.94, 19.73 | 6.50 | 19.84 | +0.31 |
+| `vSyncCount=2` | 2 | 20.68, 20.44 | 6.93 | 20.56 | +1.04 |
+| `vSyncCount=0`, `targetFrameRate=-1` | 2 | 19.23, 19.34 | 6.21 | 19.29 | -0.24 |
+| `vSyncCount=0`, `targetFrameRate=240` | 2 | 19.34, 19.22 | 6.13 | 19.28 | -0.24 |
+| `asyncUploadBufferSize=128`, confirmation | 4 | 19.53, 19.26, 19.52, 19.45 | 6.23 | 19.44 | -0.08 |
+| `vSyncCount=0`, `targetFrameRate=240`, confirmation | 4 | 19.53, 19.30, 19.20, 19.60 | 6.24 | 19.41 | -0.12 |
+| `asyncUploadBufferSize=128`, `vSyncCount=0`, `targetFrameRate=240`, confirmation | 4 | 19.62, 19.41, 19.43, 19.40 | 6.16 | 19.46 | -0.06 |
 
-Differences of two-run means are well inside the baseline's own range (1.7 s) and standard deviation (0.52 s). The only group that looked faster, the vsync conditions at -0.3 to -0.6 s, did not hold up: six more runs interleaved with six baselines gave +0.05 s. The host also drifted between the first runs of the day (19.4 to 19.8 s) and the sweep (20.5 to 22.2 s), so only interleaved comparisons mean anything.
+The baseline's 16 runs have a standard deviation of 0.22 s. Three groups moved: `backgroundLoadingPriority=Low` doubles the load (38 s), `BelowNormal` costs 1.4 s, and `vSyncCount=2` costs 1.0 s and `asyncUploadBufferSize=16` 1.2 s. Everything else is within 0.4 s of the baseline. The three conditions that were 0.3 to 0.4 s faster in the first pass (buffer 128 and vsync off) came back at -0.03, -0.06 and 0.00 s in a four-against-six interleaved confirmation, including their combination.
 
 ### Decision
 
-Closed, no gain beyond noise, nothing shipped as a default: `asyncUploadTimeSlice` (1, 8, 16, 66 against the game's 33), `asyncUploadBufferSize` (16, 32, 128, 256 against 64), `asyncUploadPersistentBuffer` (false against true; a boolean has only two values), `backgroundLoadingPriority` (Normal, BelowNormal, Low against the game's High), `vSyncCount` (0, 2 against 1) and `targetFrameRate` (-1, 240 with vsync off). The load is not limited by how much main-thread time asynchronous uploads may take, nor by frame pacing. The experiment keys and the setter trace stay in the mod as test aids; the setter hooks are installed only when `unity_experiment.txt` or `unity_settings_log.txt` exists in the mod folder. The sweep ran with the trace flag on for baseline and experiment runs alike.
+Closed, nothing shipped as a default: no value beats the game's own settings. The game already uses the best priority (High, equal to Normal within noise) and the maximum time slice during load screens; lowering the priority or the buffer or enabling vsync division only slows the load, and `asyncUploadTimeSlice` below 33, `asyncUploadPersistentBuffer`, vsync off and the frame rate cap do nothing measurable. The experiment keys and the per-frame holder stay in the mod as test aids; the holder is installed only when `unity_experiment.txt` or `unity_settings_log.txt` exists in the mod folder.
+
+## Concurrency cap and the Optimizing constants (TASK-010.05, Linux)
+
+Read from the decompiled game: `CM_FRAME_LOAD_BUDGET` (static readonly long, 200) is copied into `AssetConfiguration.frameLoadBudget` and passed to `ContentManager.UpdateTasks`, where it only makes non-async tasks wait once a frame has used that many ms (0 means no limit). `PROMISE_HANDLING_BUDGET` (static readonly int, 10) is the per-frame millisecond budget of the world-processing loop in `PhasedFSMSystem` and of `SequentialProgressPromise.Update`. `STRATEGY_INITIALIZE_FRAME_BUDGET` (static readonly long, 14) is the argument of `World.Initialize` in `StrategyScreen`. The mod sets them from `optimizing_experiment.txt` (`NAME=value`): the frame budget through a prefix on `UpdateTasks`, the other two by writing the static readonly fields through reflection at mod create, which works under the game's Mono (the trace read back `10 -> 1000`).
+
+Cold auto-load runs of the baseline save on the Steam build on this host, shipping log level, profiler off, no trace flag, baseline interleaved. Errors 5 and state-loss 10 in every run. Times in seconds; the baseline's standard deviation is 0.22 s over 17 runs, and rows from three separate passes (a sweep, a confirmation of the borderline rows, and a final interleaved check of the two candidates) are pooled per condition.
+
+| Condition | Runs | Queue to playable per run | Intro to setup (mean) | Queue to playable (mean) | vs baseline |
+| --- | --- | --- | --- | --- | --- |
+| baseline: cap 200, game constants | 17 | 19.60, 19.54, 19.29, 19.54, 19.55, 20.10, 19.26, 19.42, 19.76, 19.19, 19.44, 19.46, 19.67, 19.26, 19.48, 19.56, 19.68 | 6.31 | 19.52 | +0.00 |
+| cap 50 | 3 | 19.83, 20.01, 19.89 | 6.87 | 19.91 | +0.39 |
+| cap 100 | 3 | 19.53, 19.41, 19.61 | 6.35 | 19.52 | -0.00 |
+| cap 150 | 3 | 19.49, 19.40, 19.28 | 6.40 | 19.39 | -0.13 |
+| cap 200 (second measurement) | 3 | 19.43, 19.97, 19.58 | 6.36 | 19.66 | +0.14 |
+| cap 300 | 6 | 19.12, 19.21, 19.34, 19.04, 19.20, 19.31 | 6.21 | 19.20 | -0.31 |
+| cap 400 | 3 | 19.50, 19.70, 19.57 | 6.66 | 19.59 | +0.07 |
+| `CM_FRAME_LOAD_BUDGET=0` (no limit) | 2 | 19.36, 19.57 | 6.39 | 19.46 | -0.05 |
+| `CM_FRAME_LOAD_BUDGET=50` | 2 | 19.27, 19.31 | 6.38 | 19.29 | -0.23 |
+| `CM_FRAME_LOAD_BUDGET=1000` | 2 | 19.36, 19.76 | 6.49 | 19.56 | +0.04 |
+| `PROMISE_HANDLING_BUDGET=2` | 2 | 19.85, 19.70 | 6.44 | 19.77 | +0.26 |
+| `PROMISE_HANDLING_BUDGET=30` | 2 | 19.56, 19.62 | 6.38 | 19.59 | +0.07 |
+| `PROMISE_HANDLING_BUDGET=60` | 3 | 18.98, 19.36, 19.37 | 6.26 | 19.24 | -0.28 |
+| `PROMISE_HANDLING_BUDGET=100` | 10 | 19.04, 19.13, 18.95, 18.93, 19.19, 18.69, 19.13, 19.16, 19.02, 18.91 | 6.30 | 19.02 | -0.50 |
+| `PROMISE_HANDLING_BUDGET=200` | 3 | 19.43, 19.25, 19.41 | 6.33 | 19.36 | -0.15 |
+| `PROMISE_HANDLING_BUDGET=1000` | 2 | 21.75, 21.93 | 6.32 | 21.84 | +2.32 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=4` | 2 | 19.55, 19.86 | 6.42 | 19.70 | +0.19 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=50` | 2 | 19.93, 19.46 | 6.41 | 19.70 | +0.18 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=200` | 2 | 19.42, 19.73 | 6.29 | 19.58 | +0.06 |
+| cap 300 and `PROMISE_HANDLING_BUDGET=100` | 8 | 18.62, 18.56, 18.83, 18.83, 18.69, 18.63, 18.82, 18.70 | 6.16 | 18.71 | -0.81 |
+
+Findings:
+
+- The cap curve is flat from 100 to 400 (within 0.4 s), 50 is 0.3 s slower, and the earlier 25 to 800 Linux sweep (TASK-010.03) already showed the U shape at both ends. Cap 300 alone is 0.2 s faster than 200, which is the edge of the noise.
+- `PROMISE_HANDLING_BUDGET` has a hill: 2 and 30 do nothing, 60 and 100 are 0.2 and 0.5 s faster, 200 is neutral and 1000 is 2.2 s slower (a frame of up to a second of world processing).
+- `CM_FRAME_LOAD_BUDGET` (0, 50, 1000) and `STRATEGY_INITIALIZE_FRAME_BUDGET` (4, 50, 200) do nothing measurable. The first only throttles non-async tasks; the second is read by the strategy screen, and whether this load reaches it was not checked.
+- The two small gains add up: cap 300 with `PROMISE_HANDLING_BUDGET=100` is 0.80 s faster than the baseline (18.73 against 19.53 s, five interleaved pairs, every run below the baseline minimum), and the shipped build with no files measured 18.56 to 18.78 s.
+
+Decision: the mod now defaults to cap 300 and `PROMISE_HANDLING_BUDGET` 100 (`bundle_cap.txt` and `optimizing_experiment.txt` still override). The gain is 4% and was measured on one Linux host only; the macOS CrossOver result of TASK-007 (cap 200) is not remeasured, and the U shape means a slower machine may prefer a lower cap, so set `bundle_cap.txt` to 200 there if it regresses.
+
+Adaptive cap: closed without implementing. The fixed-cap curve is flat across a factor of four (100 to 400) and varies by 0.4 s inside it, so a policy that switches between values in that range can gain at most that much, which is below the 0.2 s noise of a pair of runs; the only fixed values that lose time (25, 50, 800 and unlimited) are the ones a policy would avoid anyway. No latency-adaptive scheme was measured.

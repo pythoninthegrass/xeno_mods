@@ -29,6 +29,8 @@ namespace X2LoadProfiler {
 
         private const string ProfilerFileName = "profiler.txt";
 
+        private const string OptimizingExperimentFileName = "optimizing_experiment.txt";
+
         private const string SettingsTraceFlagFileName = "unity_settings_log.txt";
 
         private const string SettingsTraceOutputFileName = "unity_settings.txt";
@@ -56,20 +58,41 @@ namespace X2LoadProfiler {
             } catch (Exception e) {
                 Log.Warn($"[X2LoadProfiler] Experiment failed: {e}");
             }
+            try {
+                ApplyOptimizingExperiment(mod, patcher);
+            } catch (Exception e) {
+                Log.Warn($"[X2LoadProfiler] Optimizing experiment failed: {e}");
+            }
             LogUnitySettings("Create");
         }
 
         // One line per call so a value the game rewrites during a load shows up as a change between lines
+        private static void ApplyOptimizingExperiment(Mod mod, Harmony patcher) {
+            string path = Path.Combine(mod.ContentPack, OptimizingExperimentFileName);
+            var experiment = OptimizingExperiment.Parse(File.Exists(path) ? File.ReadAllText(path) : "");
+            foreach (string line in experiment.Rejected) {
+                Log.Warn($"[X2LoadProfiler] Optimizing experiment line rejected: {line}");
+            }
+            OptimizingExperiment.WithDefaults(experiment);
+            OptimizingExperimentPatch.Apply(patcher, experiment, line => {
+                Log.Warn($"[X2LoadProfiler] {line}");
+                if (settingsTracePath != null) {
+                    TraceLine(line);
+                }
+            });
+            Log.Warn($"[X2LoadProfiler] Optimizing constants: {experiment.Describe()} source={(File.Exists(path) ? path : "default")}");
+        }
+
         private static void TraceLine(string line) {
             File.AppendAllText(settingsTracePath!, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss,fff} {line}\n");
         }
 
         // The WARN line is dropped at the shipping log level, so the same line goes to unity_settings.txt when the flag file exists
         private static void LogUnitySettings(string when) {
-            string line = $"UnitySettings {when} backgroundLoadingPriority={Application.backgroundLoadingPriority} asyncUploadTimeSlice={QualitySettings.asyncUploadTimeSlice} asyncUploadBufferSize={QualitySettings.asyncUploadBufferSize} asyncUploadPersistentBuffer={QualitySettings.asyncUploadPersistentBuffer} targetFrameRate={Application.targetFrameRate} vSyncCount={QualitySettings.vSyncCount}";
+            string line = $"UnitySettings {when} {UnitySettingsGuard.Describe()}";
             Log.Warn($"[X2LoadProfiler] {line}");
             if (settingsTracePath != null) {
-                File.AppendAllText(settingsTracePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss,fff} {line}\n");
+                TraceLine(line);
             }
         }
 

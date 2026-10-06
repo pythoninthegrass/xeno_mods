@@ -69,23 +69,18 @@ namespace X2LoadProfiler {
         // One line per call so a value the game rewrites during a load shows up as a change between lines
         private static void ApplyOptimizingExperiment(Mod mod, Harmony patcher) {
             string path = Path.Combine(mod.ContentPack, OptimizingExperimentFileName);
-            if (!File.Exists(path)) {
-                return;
-            }
-            var experiment = OptimizingExperiment.Parse(File.ReadAllText(path));
+            var experiment = OptimizingExperiment.Parse(File.Exists(path) ? File.ReadAllText(path) : "");
             foreach (string line in experiment.Rejected) {
                 Log.Warn($"[X2LoadProfiler] Optimizing experiment line rejected: {line}");
             }
+            OptimizingExperiment.WithDefaults(experiment);
             OptimizingExperimentPatch.Apply(patcher, experiment, line => {
                 Log.Warn($"[X2LoadProfiler] {line}");
                 if (settingsTracePath != null) {
                     TraceLine(line);
                 }
             });
-            Log.Warn($"[X2LoadProfiler] Optimizing experiment applied from {path}: {experiment.Describe()}");
-            if (settingsTracePath != null) {
-                TraceLine($"Optimizing experiment {experiment.Describe()}");
-            }
+            Log.Warn($"[X2LoadProfiler] Optimizing constants: {experiment.Describe()} source={(File.Exists(path) ? path : "default")}");
         }
 
         private static void TraceLine(string line) {

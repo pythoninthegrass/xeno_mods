@@ -41,6 +41,16 @@ namespace X2LoadProfiler {
             return e;
         }
 
+        public const long DefaultPromiseHandlingBudget = 100;
+
+        // The shipped values (measured in TASK-010.05) under whatever the experiment file sets
+        public static OptimizingExperiment WithDefaults(OptimizingExperiment fromFile) {
+            if (!fromFile.Values.ContainsKey(PromiseHandlingBudget)) {
+                fromFile.Values[PromiseHandlingBudget] = DefaultPromiseHandlingBudget;
+            }
+            return fromFile;
+        }
+
         public long? Get(string name) {
             return Values.TryGetValue(name, out long v) ? v : (long?)null;
         }

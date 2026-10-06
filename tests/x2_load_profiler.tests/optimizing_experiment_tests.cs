@@ -40,4 +40,17 @@ public class OptimizingExperimentTests {
         Assert.Equal("none", OptimizingExperiment.Parse("").Describe());
         Assert.Equal("PROMISE_HANDLING_BUDGET=30", OptimizingExperiment.Parse("PROMISE_HANDLING_BUDGET=30").Describe());
     }
+
+    [Fact]
+    public void Defaults_set_the_measured_best_promise_budget() {
+        var e = OptimizingExperiment.WithDefaults(OptimizingExperiment.Parse(""));
+        Assert.Equal(100, e.Get("PROMISE_HANDLING_BUDGET"));
+        Assert.Null(e.Get("CM_FRAME_LOAD_BUDGET"));
+    }
+
+    [Fact]
+    public void A_file_value_wins_over_the_default() {
+        var e = OptimizingExperiment.WithDefaults(OptimizingExperiment.Parse("PROMISE_HANDLING_BUDGET=10"));
+        Assert.Equal(10, e.Get("PROMISE_HANDLING_BUDGET"));
+    }
 }

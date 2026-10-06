@@ -46,4 +46,9 @@ public class BundleConcurrencyTests {
     public void Mod_cap_zero_stays_unlimited() {
         Assert.Equal(0, BundleConcurrency.EffectiveCap(25, 0));
     }
+
+    [Fact]
+    public void Default_cap_is_the_measured_best() {
+        Assert.Equal(300, BundleConcurrency.DefaultCap);
+    }
 }

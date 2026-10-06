@@ -334,3 +334,53 @@ Cold auto-load runs of the same baseline save (`auto_groundcombat_turn_10_start-
 GOG is about 2.1 times slower to playable, and the whole difference is in the pre-setup phase (intro to setup 20.2 s against 6.3 s); setup to playable is 19.4 s on GOG and 12.6 s on Steam. Within a build the two runs agree to 0.3 s. Warm loads on GOG (`gog-warm2..4`, two warm loads each) take 19.6 to 20.0 s to playable and 10.0 to 10.3 s from queue to setup, against 40 s cold.
 
 Cause not established: the two builds differ in Wine version and graphics path as well as in store, and the Minigalaxy Flatpak logs `libEGL warning: egl: failed to create dri2 screen`, so the two builds differ in graphics path as well as in store. Do not mix GOG and Steam numbers in one comparison; baselines for the TASK-010 subtasks must name the build. Steam warm loads were not measured because `xdotool` is missing on this host.
+
+## Unity async upload and loading settings (TASK-010.04, Linux)
+
+The mod can hold Unity settings at fixed values from `unity_experiment.txt` (`asyncUploadTimeSlice`, `asyncUploadBufferSize`, `asyncUploadPersistentBuffer`, `backgroundLoadingPriority`, and since this task `vSyncCount` and `targetFrameRate`). A Harmony prefix on each Unity setter replaces whatever the game writes with the experiment value, so a setting the game rewrites during the load stays at the swept value. With the flag file `unity_settings_log.txt` in the mod folder, every setter call and every world create and dispose is traced to `unity_settings.txt` with the calling method.
+
+### Does the game overwrite them
+
+Yes, two of them, on every load screen (trace of a cold auto-load run, no experiment):
+
+| Setting | At startup | `LoadScreen.OnEnter` | `LoadScreen.OnExit` |
+| --- | --- | --- | --- |
+| `asyncUploadTimeSlice` | 2 | 33 | 2 |
+| `backgroundLoadingPriority` | BelowNormal | High | BelowNormal |
+| `asyncUploadBufferSize` | 64 | never written | |
+| `asyncUploadPersistentBuffer` | true | never written | |
+| `vSyncCount` | 1 | never written | |
+| `targetFrameRate` | 60 | never written | |
+
+The game raises the upload time slice and the background loading priority for the duration of each load screen and restores them on exit. The cold ground-combat load passes through two load screens. This also means the earlier `backgroundLoadingPriority=High` test (set once at startup) was a no-op by construction: the game already sets High during the load. Every swept value below was applied through the setter hook and the trace confirms it was stored in place of the game's write (`requested=33 stored=66`, `requested=High stored=Low`).
+
+### Sweep
+
+Cold auto-load runs of the baseline save on the Steam build on this host, shipping log level, profiler off, one run at a time. Baseline runs (no experiment file) were interleaved every fourth run. Errors 5 and state-loss 10 in every run. Queue to playable in seconds; "vs baseline" is the difference of means.
+
+| Condition | Runs | Queue to playable per run | Intro to setup (mean) | Queue to playable (mean) | vs baseline |
+| --- | --- | --- | --- | --- | --- |
+| baseline (game values: slice 33 and High during load) | 16 | 20.54 to 22.20, standard deviation 0.52 | 7.57 | 21.11 | 0.00 |
+| `asyncUploadTimeSlice=1` | 2 | 22.11, 21.32 | 8.23 | 21.71 | +0.60 |
+| `asyncUploadTimeSlice=8` | 2 | 21.55, 21.54 | 7.86 | 21.55 | +0.43 |
+| `asyncUploadTimeSlice=16` | 2 | 21.70, 21.67 | 8.08 | 21.69 | +0.57 |
+| `asyncUploadTimeSlice=66` | 2 | 21.04, 21.64 | 8.01 | 21.34 | +0.23 |
+| `asyncUploadBufferSize=16` | 2 | 21.90, 21.07 | 7.94 | 21.48 | +0.37 |
+| `asyncUploadBufferSize=32` | 2 | 20.66, 21.54 | 7.46 | 21.10 | -0.01 |
+| `asyncUploadBufferSize=128` | 2 | 20.86, 21.27 | 7.56 | 21.06 | -0.05 |
+| `asyncUploadBufferSize=256` | 2 | 21.42, 21.32 | 7.71 | 21.37 | +0.26 |
+| `asyncUploadPersistentBuffer=false` | 2 | 21.11, 21.28 | 7.71 | 21.20 | +0.08 |
+| `backgroundLoadingPriority=Normal` | 2 | 21.38, 21.01 | 7.70 | 21.20 | +0.08 |
+| `backgroundLoadingPriority=BelowNormal` | 2 | 21.69, 20.62 | 7.90 | 21.16 | +0.04 |
+| `backgroundLoadingPriority=Low` | 2 | 21.87, 21.01 | 7.84 | 21.44 | +0.33 |
+| `vSyncCount=0` | 2 | 20.66, 20.79 | 7.43 | 20.73 | -0.39 |
+| `vSyncCount=2` | 2 | 20.85, 20.54 | 7.28 | 20.70 | -0.42 |
+| `vSyncCount=0`, `targetFrameRate=-1` | 2 | 20.60, 20.95 | 7.41 | 20.77 | -0.34 |
+| `vSyncCount=0`, `targetFrameRate=240` | 2 | 20.62, 20.41 | 7.21 | 20.52 | -0.60 |
+| `vSyncCount=0`, `targetFrameRate=240`, second confirmation | 6 | 21.32, 20.42, 20.73, 21.34, 22.00, 21.15 | 7.79 | 21.16 | +0.05 |
+
+Differences of two-run means are well inside the baseline's own range (1.7 s) and standard deviation (0.52 s). The only group that looked faster, the vsync conditions at -0.3 to -0.6 s, did not hold up: six more runs interleaved with six baselines gave +0.05 s. The host also drifted between the first runs of the day (19.4 to 19.8 s) and the sweep (20.5 to 22.2 s), so only interleaved comparisons mean anything.
+
+### Decision
+
+Closed, no gain beyond noise, nothing shipped as a default: `asyncUploadTimeSlice` (1, 8, 16, 66 against the game's 33), `asyncUploadBufferSize` (16, 32, 128, 256 against 64), `asyncUploadPersistentBuffer` (false against true; a boolean has only two values), `backgroundLoadingPriority` (Normal, BelowNormal, Low against the game's High), `vSyncCount` (0, 2 against 1) and `targetFrameRate` (-1, 240 with vsync off). The load is not limited by how much main-thread time asynchronous uploads may take, nor by frame pacing. The experiment keys and the setter trace stay in the mod as test aids; the setter hooks are installed only when `unity_experiment.txt` or `unity_settings_log.txt` exists in the mod folder. The sweep ran with the trace flag on for baseline and experiment runs alike.

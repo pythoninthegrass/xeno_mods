@@ -48,4 +48,37 @@ public class UnityExperimentSettingsTests {
     public void Describe_is_none_when_nothing_was_set() {
         Assert.Equal("none", UnityExperimentSettings.Parse("").Describe());
     }
+
+    [Fact]
+    public void Parses_frame_pacing_keys() {
+        var s = UnityExperimentSettings.Parse("vSyncCount=0\ntargetFrameRate=-1\n");
+        Assert.Equal(0, s.VSyncCount);
+        Assert.Equal(-1, s.TargetFrameRate);
+        Assert.Empty(s.Rejected);
+    }
+
+    [Fact]
+    public void Frame_pacing_keys_are_unset_by_default_and_rejected_when_not_numbers() {
+        var s = UnityExperimentSettings.Parse("vSyncCount=off\n");
+        Assert.Null(s.VSyncCount);
+        Assert.Null(s.TargetFrameRate);
+        Assert.Single(s.Rejected);
+    }
+
+    [Fact]
+    public void Describe_includes_frame_pacing_keys() {
+        var s = UnityExperimentSettings.Parse("vSyncCount=0\ntargetFrameRate=240");
+        Assert.Equal("vSyncCount=0 targetFrameRate=240", s.Describe());
+    }
+
+    [Fact]
+    public void Forced_value_wins_over_the_requested_one() {
+        Assert.Equal(8, UnityExperimentSettings.Resolve(33, 8));
+    }
+
+    [Fact]
+    public void Requested_value_is_kept_when_nothing_is_forced() {
+        Assert.Equal(33, UnityExperimentSettings.Resolve(33, null));
+        Assert.True(UnityExperimentSettings.Resolve(true, null));
+    }
 }

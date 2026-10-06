@@ -17,6 +17,7 @@
     <Compile Include="../../src/x2_load_profiler/update_tasks_stats.cs" Link="update_tasks_stats.cs" />
     <Compile Include="../../src/x2_load_profiler/bundle_load_stats.cs" Link="bundle_load_stats.cs" />
     <Compile Include="../../src/x2_load_profiler/unity_experiment_settings.cs" Link="unity_experiment_settings.cs" />
+    <Compile Include="../../src/x2_load_profiler/optimizing_experiment.cs" Link="optimizing_experiment.cs" />
     <Compile Include="../../src/x2_load_profiler/auto_load_settings.cs" Link="auto_load_settings.cs" />
     <Compile Include="../../src/x2_load_profiler/bundle_concurrency.cs" Link="bundle_concurrency.cs" />
     <Compile Include="../../src/x2_load_profiler/bundle_record.cs" Link="bundle_record.cs" />

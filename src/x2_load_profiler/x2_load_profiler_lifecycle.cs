@@ -29,6 +29,8 @@ namespace X2LoadProfiler {
 
         private const string ProfilerFileName = "profiler.txt";
 
+        private const string OptimizingExperimentFileName = "optimizing_experiment.txt";
+
         private const string SettingsTraceFlagFileName = "unity_settings_log.txt";
 
         private const string SettingsTraceOutputFileName = "unity_settings.txt";
@@ -56,10 +58,36 @@ namespace X2LoadProfiler {
             } catch (Exception e) {
                 Log.Warn($"[X2LoadProfiler] Experiment failed: {e}");
             }
+            try {
+                ApplyOptimizingExperiment(mod, patcher);
+            } catch (Exception e) {
+                Log.Warn($"[X2LoadProfiler] Optimizing experiment failed: {e}");
+            }
             LogUnitySettings("Create");
         }
 
         // One line per call so a value the game rewrites during a load shows up as a change between lines
+        private static void ApplyOptimizingExperiment(Mod mod, Harmony patcher) {
+            string path = Path.Combine(mod.ContentPack, OptimizingExperimentFileName);
+            if (!File.Exists(path)) {
+                return;
+            }
+            var experiment = OptimizingExperiment.Parse(File.ReadAllText(path));
+            foreach (string line in experiment.Rejected) {
+                Log.Warn($"[X2LoadProfiler] Optimizing experiment line rejected: {line}");
+            }
+            OptimizingExperimentPatch.Apply(patcher, experiment, line => {
+                Log.Warn($"[X2LoadProfiler] {line}");
+                if (settingsTracePath != null) {
+                    TraceLine(line);
+                }
+            });
+            Log.Warn($"[X2LoadProfiler] Optimizing experiment applied from {path}: {experiment.Describe()}");
+            if (settingsTracePath != null) {
+                TraceLine($"Optimizing experiment {experiment.Describe()}");
+            }
+        }
+
         private static void TraceLine(string line) {
             File.AppendAllText(settingsTracePath!, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss,fff} {line}\n");
         }

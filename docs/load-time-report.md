@@ -294,3 +294,28 @@ Twelve cold auto-load launches on 2026-10-05 with the profiler off (the shipped 
 | Unlimited (profiler on, 5 runs) | 16.7 to 18.6 s | about 18.2 s | 28.6 to 30.8 s | about 30.1 s |
 
 The curve is U-shaped with a flat bottom from 100 to 400. Cap 200 is 0.1 s from the best mean (cap 100), and the spread inside each pair is 0.1 to 0.2 s, so the difference between 100, 200 and 400 is not resolved by these runs. Moving from the game's 25 to 200 saves 2.5 s of intro to setup and 2.5 s to playable on this host, close to the macOS result. Going above 400 loses time: 800 is as slow as 25, and unlimited is 12 s slower, consistent with the main-thread overhead measured above. On Linux there is no further gain from retuning the cap, so the shipped value of 200 stays. The unlimited row was taken with the profiler on, which adds about 1.3 to 1.5 s on cold loads, so it is not directly comparable to the other rows.
+
+## Keeping assets across the load screen (TASK-010.07, Linux)
+
+The code was committed at 653e095 and removed in 2e98b51; recover it from history. Idea: the load screen unloads every asset of the previous screen and then loads the target screen's assets again, so 2574 of the 5497 pre-setup loads are reloads (TASK-010.06). `ManagedScreen.TransferManifests` is the game's own hook for assets that stay loaded across screens; its base implementation transfers nothing and nobody overrides it. `AssetKeepPatch` (opt-in through `transfer_keep.txt` in the mod folder, `src/x2_load_profiler/asset_keep*.cs`) moves assets from the unload manifest to the transfer manifest, and the target screen then owns them and unloads them when it is disposed.
+
+Results, cold auto-load runs on the Linux host at the shipping log level, profiler off, errors 5 and state-loss 10 per load in every run:
+
+| Variant | Outcome |
+|---|---|
+| Keep every previous-screen asset that the target requests again (`_descriptorsToLoad`) | Load fails. `STRICT MODE ERROR: ...game_overs/game_over.json (Call Load before Get.)`, the playable marker is never reached. |
+| The same plus the loader dependency closure (`ILoader.GetDependencies`) | Same failure. 751 assets that the baseline reloads were left unloaded: 325 templates, 290 sprites, 47 template producers, 25 UI elements, 23 prefabs, 17 audio clips, 15 mission definitions, 9 others. |
+| Keep only leaf kinds (Sprite, AudioClip) that the target requests directly | Loads and plays through to the playable marker. Only 121 loads are avoided (8687 against 8808 per session), 2% of the pre-setup loads. |
+
+Why the first two fail: a kept template is not post-processed again, and that processing is what requests the assets it references (`AssetReferenceProcessor`). Those references are not loader dependencies, so the game reloads them in the baseline only because their parent was reloaded. Keeping the parent leaves them unloaded, and the first `Get` throws in strict mode. The reference graph is not exposed by the content manager, so keeping templates, template producers, UI elements or any kind that references other assets is not safe without reconstructing it. Sprites and audio clips reference nothing, which is why that subset is closed by construction.
+
+Timing of the leaf-kind variant, three interleaved cold pairs (`t07-on-m1..3`, `t07-off-m1..3`; two further off runs `t07-off-a` and `t07-off-c` agree):
+
+| | Intro to setup | Queue to playable |
+|---|---|---|
+| Keep off (3 runs) | 5.93, 6.02, 5.80 s (mean 5.92 s) | 18.08, 18.43, 17.89 s (mean 18.13 s) |
+| Keep on (3 runs) | 5.96, 5.82, 5.95 s (mean 5.91 s) | 18.09, 18.09, 18.23 s (mean 18.14 s) |
+
+The difference is 0.01 s, well inside the 0.1 to 0.2 s spread of a pair. The safe subset gains nothing measurable, and the part that would gain (templates, 1280 of the reloads and 1559 of the 2948 summed reload seconds) cannot be kept without the reference graph. Warm loads were not measured because `xdotool` is missing on this host. Decision: closed, no gain beyond noise; the code is removed from the tree. Deferring the 481 strategy first loads was not attempted: the audit has no read trace to show that ground combat never reads them, and the failure above shows that a missing asset fails the load rather than being tolerated.
+
+Operational note: killing the game after a failed load makes the next launch open a "Crash Report" dialog over the main menu, which blocks the auto-load (`no 'Queued LoadGameCommand' line appeared`). Close it through the KVM before rerunning.

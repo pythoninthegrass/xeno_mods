@@ -278,3 +278,19 @@ Findings:
 4. **Cap 200 is not shown to be optimal.** At cap 200 neither the main thread (66%) nor the deserialize thread (41%) is saturated, and loads wait up to 4.4 s for a slot, so a higher cap below the point where the main-thread overhead appears may help. Only 25 (macOS), 200 and unlimited have been measured. This is the cap sweep of TASK-010.05.
 
 Not done: a per-load split inside `LoadAssetAsync` (the `AssetBundleRequest.progress` experiment), and bundle size and compression as predictors, because loads are single assets read from resident bundles and the capture carries no per-load file size.
+
+### Cap sweep on Linux
+
+Twelve cold auto-load launches on 2026-10-05 with the profiler off (the shipped configuration), `bundle_cap.txt` set per run, two interleaved rounds (`run10a-*`, `run10b-*`, plus `run10c-cap50` replacing a launch that failed before the game started). Every run has 5 `[ERROR]` lines and 10 state-loss matches.
+
+| Cap | Intro to setup (2 runs) | Mean | Queue to playable (2 runs) | Mean |
+|---|---|---|---|---|
+| 25 (game default) | 8.45, 8.52 s | 8.49 s | 20.68, 20.79 s | 20.74 s |
+| 50 | 6.64, 6.61 s | 6.63 s | 18.89, 18.82 s | 18.86 s |
+| 100 | 5.96, 5.72 s | 5.84 s | 18.00, 17.77 s | 17.89 s |
+| 200 (shipped) | 5.99, 5.89 s | 5.94 s | 18.40, 18.02 s | 18.21 s |
+| 400 | 6.32, 6.20 s | 6.26 s | 18.36, 18.21 s | 18.29 s |
+| 800 | 8.06, 8.03 s | 8.05 s | 20.15, 19.99 s | 20.07 s |
+| Unlimited (profiler on, 5 runs) | 16.7 to 18.6 s | about 18.2 s | 28.6 to 30.8 s | about 30.1 s |
+
+The curve is U-shaped with a flat bottom from 100 to 400. Cap 200 is 0.1 s from the best mean (cap 100), and the spread inside each pair is 0.1 to 0.2 s, so the difference between 100, 200 and 400 is not resolved by these runs. Moving from the game's 25 to 200 saves 2.5 s of intro to setup and 2.5 s to playable on this host, close to the macOS result. Going above 400 loses time: 800 is as slow as 25, and unlimited is 12 s slower, consistent with the main-thread overhead measured above. On Linux there is no further gain from retuning the cap, so the shipped value of 200 stays. The unlimited row was taken with the profiler on, which adds about 1.3 to 1.5 s on cold loads, so it is not directly comparable to the other rows.

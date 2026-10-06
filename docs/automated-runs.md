@@ -53,17 +53,11 @@ On macOS, menu mode needs these permissions granted to the terminal that runs th
 
 ## Linux and Proton
 
-On Linux the game runs under Proton rather than CrossOver, and the script runs **inside** the steam-headless container, not on the host. Everything it touches lives there: the game process, the Proton prefix, `Logs/output.log`, the mod folder and the X display.
-
-The repo has to be reachable inside the container, and `uv` has to be on the PATH. The steam-headless image puts `~/.local/bin` on the login PATH, so a login shell finds a `uv` installed there; a plain `docker exec` does not, hence `bash -lc`:
-
-```bash
-docker exec -u default -e DISPLAY=:55 steamos bash -lc 'cd /path/to/xeno_mods && scripts/run.py run1-auto'
-```
+On Linux the game runs under Proton rather than CrossOver, directly on the host (not in a container), and the script runs on the same host. The reference setup is an AlmaLinux workstation with a KDE Plasma Wayland session, Flatpak Steam (`com.valvesoftware.Steam`) with its library on a separate mount, and an optional GOG copy (see [GOG build and KDE Wayland](#gog-build-and-kde-wayland)). Everything the script touches lives on that host: the game process, the Proton prefix, `Logs/output.log`, the mod folder and the display.
 
 What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAULTS`:
 
-| Setting | macOS | Linux |
+| Setting | macOS | Linux built-in default |
 | --- | --- | --- |
 | `BOTTLE` | the CrossOver bottle's `drive_c` | `~/.steam/steam/steamapps/compatdata/538030/pfx/drive_c` |
 | `GAME_DIR` | inside the bottle | `~/.steam/steam/steamapps/common/Xenonauts2`, outside the prefix |
@@ -74,28 +68,45 @@ What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAU
 | `STEAM_CONSOLE_LOG` | inside the bottle | `~/.steam/steam/logs/console_log.txt` |
 | `STEAM_PROCESS_PATTERN` | `[s]team.exe` | `[s]teamwebhelper` |
 
-`LAUNCH_CMD` and `CLICK_CMD` are shell-quoted command lines. `{app}` is replaced with `LAUNCHER_APP`, and `{x}` and `{y}` with the click point; the replacement is literal, so braces elsewhere in the command survive. `{bottle}` expands to `BOTTLE` in any path setting.
+The Linux defaults assume a native Steam under `~/.steam`. The reference host uses Flatpak Steam with its library on another mount, so it overrides four keys in the gitignored `.env`:
+
+| Key | Reference host value |
+| --- | --- |
+| `BOTTLE` | `<steam-library>/steamapps/compatdata/538030/pfx/drive_c` |
+| `GAME_DIR` | `<steam-library>/steamapps/common/Xenonauts2` |
+| `STEAM_CONSOLE_LOG` | `<steam-library>/logs/console-linux.txt` |
+| `LAUNCH_CMD` | `flatpak run com.valvesoftware.Steam steam://rungameid/538030` |
+
+`WINE_USER`, `STEAM_PROCESS_PATTERN` and the derived `DATA_DIR` are right as they are. `LAUNCH_CMD` and `CLICK_CMD` are shell-quoted command lines. `{app}` is replaced with `LAUNCHER_APP`, and `{x}` and `{y}` with the click point; the replacement is literal, so braces elsewhere in the command survive. `{bottle}` expands to `BOTTLE` in any path setting.
+
+Run it from a terminal inside the desktop session, or point the shell at the session:
+
+```bash
+DISPLAY=:0 scripts/run.py run1-auto
+```
+
+From a tty or ssh session, also set `XAUTHORITY` to the session's Xwayland authority file under `$XDG_RUNTIME_DIR`; Steam fails with `Unable to open X11 display` without it.
 
 Linux preconditions:
 
-- The steam-headless container is up with its X display reachable, and `DISPLAY` is set for the script.
-- Native Steam is running and logged in, with Xenonauts 2 installed and forced to a Proton version.
+- Flatpak Steam is running and logged in, with Xenonauts 2 installed and forced to a Proton version.
+- Steam allows one game session per account. If the account is playing elsewhere, launching shows a dialog on the host's screen and the run fails with `Xenonauts2.exe did not start within N s`. Resolve it on the desktop (or use the GOG build) before rerunning.
 - Steam Cloud sync is disabled for Xenonauts 2, as on macOS.
-- `xdotool` is installed in the container (it ships with the steam-headless image).
-- `uv` is installed in the container, for the script's shebang. `/home/default` is a host bind mount, so an install under `~/.local/bin` survives a recreate.
-- The repo is mounted into the container, or otherwise present under `/home/default`.
+- A click tool matching the session is installed: `xdotool` on X11, `ydotool` on Wayland (see [Clicks on Wayland](#clicks-on-wayland)). Auto mode needs none.
+- `uv` is installed, for the script's shebang.
+- The mods are built into the Steam mod folder: `Directory.Build.local.props` in `src/x2_load_profiler` and `src/x2_load_timing` (gitignored) points `ModInstanceFolder` at it.
 
-The click coordinates still default to the 2560x1440 macOS values. The container's display is 1920x1080, so menu mode and `--warm-loads` need all six points set in `.env` before they will work there.
+The click coordinates default to the 2560x1440 macOS values. A 1920x1080 display needs all six points set in `.env`; the calibrated values are under [Clicks on Wayland](#clicks-on-wayland).
 
 ## GOG build and KDE Wayland
 
-`BUILD=gog` runs the GOG install from the Minigalaxy Flatpak (see [gog.md](gog.md)) instead of Steam. It needs no Steam client, console log or cloud-sync check, and avoids the one-session-per-account blocker. `BUILD` defaults to `steam`, and the Steam and macOS defaults do not change. The GOG build is Linux only.
+`BUILD=gog` runs the GOG install from the Minigalaxy Flatpak (see [gog.md](gog.md); the install lives under a mount such as `/media/gog`) instead of Steam. It needs no Steam client, console log or cloud-sync check, and avoids the one-session-per-account blocker. `BUILD` defaults to `steam`, and the Steam and macOS defaults do not change. The GOG build is Linux only.
 
 ```bash
-BUILD=gog DISPLAY=:0 XAUTHORITY=/run/user/$(id -u)/xauth_* scripts/run.py gog-run1
+BUILD=gog DISPLAY=:0 scripts/run.py gog-run1
 ```
 
-`XAUTHORITY` is only needed when the shell is not inside the desktop session (a tty or ssh); the game itself starts without it, Steam does not.
+`XAUTHORITY` (the session's Xwayland authority file under `$XDG_RUNTIME_DIR`) is only needed when the shell is not inside the desktop session (a tty or ssh); the game itself starts without it, Steam does not.
 
 The settings that differ per build (`BOTTLE`, `GAME_DIR`, `DATA_DIR`, `WINE_USER`, `LAUNCHER_APP`, `LAUNCH_CMD`, `CLICK_CMD`, `MOVE_CMD`, `STEAM_CONSOLE_LOG`, `STEAM_PROCESS_PATTERN`) are read as `GOG_<name>` under `BUILD=gog`, so the Steam overrides in `.env` cannot leak into a GOG run. Everything else (timeouts, click points, markers) is shared.
 
@@ -108,7 +119,7 @@ The settings that differ per build (`BOTTLE`, `GAME_DIR`, `DATA_DIR`, `WINE_USER
 | `GOG_CLICK_CMD` | `ydotool` move then click (below) |
 | `GOG_MOVE_CMD` | `ydotool` move, used to park the pointer |
 
-The launch command is Minigalaxy's own command line, run without clicking Play. The prefix has to be given by the document-portal path Minigalaxy uses (`/run/user/1000/doc/<id>/gog/Xenonauts 2/prefix`), because the `c:\game` link inside the prefix is relative to that path; the host path `/media/gog/...` gives `ShellExecuteEx failed: File not found`. The id (`5cf27610`) is machine specific: take it from `install_dir` in the Minigalaxy `config.json`, and set `GOG_LAUNCH_CMD` in `.env` if yours differs. The launch command must return within `LAUNCH_TIMEOUT` and the game process must appear within the same time; otherwise the run ends with `launch command failed`, `launch command did not return within N s` or `Xenonauts2.exe did not start within N s`. A game that is already running is stopped before the launch.
+The launch command is Minigalaxy's own command line, run without clicking Play. The prefix has to be given by the document-portal path Minigalaxy uses (`/run/user/<uid>/doc/<id>/gog/Xenonauts 2/prefix`), because the `c:\game` link inside the prefix is relative to that path; the host path `/media/gog/...` gives `ShellExecuteEx failed: File not found`. The `<id>` is machine specific: take it from `install_dir` in the Minigalaxy `config.json`, and set `GOG_LAUNCH_CMD` in `.env` if yours differs. The launch command must return within `LAUNCH_TIMEOUT` and the game process must appear within the same time; otherwise the run ends with `launch command failed`, `launch command did not return within N s` or `Xenonauts2.exe did not start within N s`. A game that is already running is stopped before the launch.
 
 Preconditions:
 
@@ -124,14 +135,14 @@ Preconditions:
 
 ### Clicks on Wayland
 
-`xdotool` cannot post events to a Wayland compositor, so the GOG build clicks with `ydotool`. Two properties of this host's KDE session shape the command:
+`xdotool` cannot post events to a Wayland compositor, so the GOG build clicks with `ydotool`. Two properties of the reference host's KDE session shape the command:
 
 - `ydotool mousemove --absolute` does not reach the requested point. The default command instead moves to the top-left corner with a large relative move and then moves `x / 2`, `y / 2`: the pointer travels twice the requested distance, which was measured by screenshot at several distances. This ratio depends on the pointer speed setting and acceleration profile, so recalibrate it if the pointer lands elsewhere.
 - The socket is `$XDG_RUNTIME_DIR/.ydotool_socket`; the command falls back to `/run/user/<uid>/.ydotool_socket` when `YDOTOOL_SOCKET` is not set.
 
 After every click the pointer is moved to `PARK_POINT` (default `1900,540`, empty right-hand edge) through `MOVE_CMD`, so no tooltip stays open over the HUD and no element keeps the focus. `MOVE_CMD` is unset on macOS and on Steam/Linux, which behave as before.
 
-Click points are screen pixels of a 1920x1080 display and depend on the display and the game's UI scale. The points calibrated for this host (from screenshots of the main menu, the load list and the in-game menu) are:
+Click points are screen pixels of a 1920x1080 display and depend on the display and the game's UI scale. The points calibrated for the reference host (from screenshots of the main menu, the load list and the in-game menu) are:
 
 | Setting | Point | Element |
 | --- | --- | --- |
@@ -142,7 +153,7 @@ Click points are screen pixels of a 1920x1080 display and depend on the display 
 | `GAME_MENU_LOAD_GAME` | `960,570` | LOAD GAME in the game menu |
 | `GAME_MENU_SAVE_ROW` | `700,402` | same row in the in-game load list |
 
-Rows are positional, so a different save list needs different rows; the run fails with `wrong save loaded` rather than measuring the wrong save. Screenshots on this session: `spectacle -b -n -f -p -o file.png` (the `-p` includes the pointer).
+Rows are positional, so a different save list needs different rows; the run fails with `wrong save loaded` rather than measuring the wrong save. Screenshots on a Wayland session: `spectacle -b -n -f -p -o file.png` (the `-p` includes the pointer).
 
 ## Verification and failure handling
 

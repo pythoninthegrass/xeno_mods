@@ -391,3 +391,43 @@ The baseline's 16 runs have a standard deviation of 0.22 s. Three groups moved: 
 ### Decision
 
 Closed, nothing shipped as a default: no value beats the game's own settings. The game already uses the best priority (High, equal to Normal within noise) and the maximum time slice during load screens; lowering the priority or the buffer or enabling vsync division only slows the load, and `asyncUploadTimeSlice` below 33, `asyncUploadPersistentBuffer`, vsync off and the frame rate cap do nothing measurable. The experiment keys and the per-frame holder stay in the mod as test aids; the holder is installed only when `unity_experiment.txt` or `unity_settings_log.txt` exists in the mod folder.
+
+## Concurrency cap and the Optimizing constants (TASK-010.05, Linux)
+
+Read from the decompiled game: `CM_FRAME_LOAD_BUDGET` (static readonly long, 200) is copied into `AssetConfiguration.frameLoadBudget` and passed to `ContentManager.UpdateTasks`, where it only makes non-async tasks wait once a frame has used that many ms (0 means no limit). `PROMISE_HANDLING_BUDGET` (static readonly int, 10) is the per-frame millisecond budget of the world-processing loop in `PhasedFSMSystem` and of `SequentialProgressPromise.Update`. `STRATEGY_INITIALIZE_FRAME_BUDGET` (static readonly long, 14) is the argument of `World.Initialize` in `StrategyScreen`. The mod sets them from `optimizing_experiment.txt` (`NAME=value`): the frame budget through a prefix on `UpdateTasks`, the other two by writing the static readonly fields through reflection at mod create, which works under the game's Mono (the trace read back `10 -> 1000`).
+
+Cold auto-load runs of the baseline save on the Steam build on this host, shipping log level, profiler off, no trace flag, baseline interleaved. Errors 5 and state-loss 10 in every run. Times in seconds; the baseline's standard deviation is 0.22 s over 17 runs, and rows from three separate passes (a sweep, a confirmation of the borderline rows, and a final interleaved check of the two candidates) are pooled per condition.
+
+| Condition | Runs | Queue to playable per run | Intro to setup (mean) | Queue to playable (mean) | vs baseline |
+| --- | --- | --- | --- | --- | --- |
+| baseline: cap 200, game constants | 17 | 19.60, 19.54, 19.29, 19.54, 19.55, 20.10, 19.26, 19.42, 19.76, 19.19, 19.44, 19.46, 19.67, 19.26, 19.48, 19.56, 19.68 | 6.31 | 19.52 | +0.00 |
+| cap 50 | 3 | 19.83, 20.01, 19.89 | 6.87 | 19.91 | +0.39 |
+| cap 100 | 3 | 19.53, 19.41, 19.61 | 6.35 | 19.52 | -0.00 |
+| cap 150 | 3 | 19.49, 19.40, 19.28 | 6.40 | 19.39 | -0.13 |
+| cap 200 (second measurement) | 3 | 19.43, 19.97, 19.58 | 6.36 | 19.66 | +0.14 |
+| cap 300 | 6 | 19.12, 19.21, 19.34, 19.04, 19.20, 19.31 | 6.21 | 19.20 | -0.31 |
+| cap 400 | 3 | 19.50, 19.70, 19.57 | 6.66 | 19.59 | +0.07 |
+| `CM_FRAME_LOAD_BUDGET=0` (no limit) | 2 | 19.36, 19.57 | 6.39 | 19.46 | -0.05 |
+| `CM_FRAME_LOAD_BUDGET=50` | 2 | 19.27, 19.31 | 6.38 | 19.29 | -0.23 |
+| `CM_FRAME_LOAD_BUDGET=1000` | 2 | 19.36, 19.76 | 6.49 | 19.56 | +0.04 |
+| `PROMISE_HANDLING_BUDGET=2` | 2 | 19.85, 19.70 | 6.44 | 19.77 | +0.26 |
+| `PROMISE_HANDLING_BUDGET=30` | 2 | 19.56, 19.62 | 6.38 | 19.59 | +0.07 |
+| `PROMISE_HANDLING_BUDGET=60` | 3 | 18.98, 19.36, 19.37 | 6.26 | 19.24 | -0.28 |
+| `PROMISE_HANDLING_BUDGET=100` | 10 | 19.04, 19.13, 18.95, 18.93, 19.19, 18.69, 19.13, 19.16, 19.02, 18.91 | 6.30 | 19.02 | -0.50 |
+| `PROMISE_HANDLING_BUDGET=200` | 3 | 19.43, 19.25, 19.41 | 6.33 | 19.36 | -0.15 |
+| `PROMISE_HANDLING_BUDGET=1000` | 2 | 21.75, 21.93 | 6.32 | 21.84 | +2.32 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=4` | 2 | 19.55, 19.86 | 6.42 | 19.70 | +0.19 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=50` | 2 | 19.93, 19.46 | 6.41 | 19.70 | +0.18 |
+| `STRATEGY_INITIALIZE_FRAME_BUDGET=200` | 2 | 19.42, 19.73 | 6.29 | 19.58 | +0.06 |
+| cap 300 and `PROMISE_HANDLING_BUDGET=100` | 8 | 18.62, 18.56, 18.83, 18.83, 18.69, 18.63, 18.82, 18.70 | 6.16 | 18.71 | -0.81 |
+
+Findings:
+
+- The cap curve is flat from 100 to 400 (within 0.4 s), 50 is 0.3 s slower, and the earlier 25 to 800 Linux sweep (TASK-010.03) already showed the U shape at both ends. Cap 300 alone is 0.2 s faster than 200, which is the edge of the noise.
+- `PROMISE_HANDLING_BUDGET` has a hill: 2 and 30 do nothing, 60 and 100 are 0.2 and 0.5 s faster, 200 is neutral and 1000 is 2.2 s slower (a frame of up to a second of world processing).
+- `CM_FRAME_LOAD_BUDGET` (0, 50, 1000) and `STRATEGY_INITIALIZE_FRAME_BUDGET` (4, 50, 200) do nothing measurable. The first only throttles non-async tasks; the second is read by the strategy screen, and whether this load reaches it was not checked.
+- The two small gains add up: cap 300 with `PROMISE_HANDLING_BUDGET=100` is 0.80 s faster than the baseline (18.73 against 19.53 s, five interleaved pairs, every run below the baseline minimum), and the shipped build with no files measured 18.56 to 18.78 s.
+
+Decision: the mod now defaults to cap 300 and `PROMISE_HANDLING_BUDGET` 100 (`bundle_cap.txt` and `optimizing_experiment.txt` still override). The gain is 4% and was measured on one Linux host only; the macOS CrossOver result of TASK-007 (cap 200) is not remeasured, and the U shape means a slower machine may prefer a lower cap, so set `bundle_cap.txt` to 200 there if it regresses.
+
+Adaptive cap: closed without implementing. The fixed-cap curve is flat across a factor of four (100 to 400) and varies by 0.4 s inside it, so a policy that switches between values in that range can gain at most that much, which is below the 0.2 s noise of a pair of runs; the only fixed values that lose time (25, 50, 800 and unlimited) are the ones a policy would avoid anyway. No latency-adaptive scheme was measured.

@@ -1,0 +1,1344 @@
+# start 2026-10-05 21:36:54.499907 pid 63924 interval 0.1
+0.000	63924	Xenonauts2.exe	S	8
+0.102	63924	Xenonauts2.exe	R	4
+0.204	63924	Xenonauts2.exe	R	10
+0.306	63924	Xenonauts2.exe	R	9
+0.407	63924	Xenonauts2.exe	R	10
+0.509	63924	Xenonauts2.exe	R	10
+0.611	63924	Xenonauts2.exe	R	11
+0.713	63924	Xenonauts2.exe	S	2
+0.815	63924	Xenonauts2.exe	R	10
+0.917	63924	Xenonauts2.exe	R	9
+1.019	63924	Xenonauts2.exe	R	10
+1.019	64021	UnityGfxDeviceW	R	0
+1.121	63924	Xenonauts2.exe	R	10
+1.223	63924	Xenonauts2.exe	R	10
+1.325	63924	Xenonauts2.exe	R	9
+1.427	63924	Xenonauts2.exe	R	10
+1.531	63924	Xenonauts2.exe	S	4
+1.531	64021	UnityGfxDeviceW	R	6
+1.531	64055	dxvk-shader-l	R	2
+1.531	64056	dxvk-shader-l	S	2
+1.531	64057	dxvk-shader-l	R	2
+1.531	64058	dxvk-shader-l	R	2
+1.531	64059	dxvk-shader-n	S	1
+1.531	64060	dxvk-shader-n	R	1
+1.531	64061	dxvk-shader-n	S	1
+1.531	64062	dxvk-shader-n	S	1
+1.531	64063	dxvk-shader-n	R	1
+1.531	64064	dxvk-shader-n	S	1
+1.633	63924	Xenonauts2.exe	S	3
+1.633	64016	Xenonauts2.exe	S	1
+1.633	64020	dxvk-cs	S	1
+1.633	64021	UnityGfxDeviceW	R	8
+1.633	64055	dxvk-shader-l	S	6
+1.633	64056	dxvk-shader-l	S	6
+1.633	64057	dxvk-shader-l	S	6
+1.633	64058	dxvk-shader-l	S	7
+1.633	64059	dxvk-shader-n	S	2
+1.633	64060	dxvk-shader-n	S	3
+1.633	64061	dxvk-shader-n	S	3
+1.633	64062	dxvk-shader-n	S	2
+1.633	64063	dxvk-shader-n	S	3
+1.633	64064	dxvk-shader-n	S	3
+1.633	64072	Loading.Preload	R	1
+1.736	63954	Job.Worker 2	R	0
+1.736	63984	Loading.AsyncRe	S	1
+1.736	64021	UnityGfxDeviceW	S	5
+1.736	64072	Loading.Preload	R	9
+1.839	63954	Job.Worker 2	S	1
+1.839	63984	Loading.AsyncRe	S	2
+1.839	64017	dxvk-submit	S	2
+1.839	64020	dxvk-cs	R	0
+1.839	64021	UnityGfxDeviceW	S	1
+1.839	64072	Loading.Preload	R	11
+1.942	63924	Xenonauts2.exe	S	1
+1.942	64017	dxvk-submit	S	2
+1.942	64018	dxvk-queue	R	0
+1.942	64020	dxvk-cs	S	1
+1.942	64072	Loading.Preload	R	9
+2.045	63924	Xenonauts2.exe	S	1
+2.045	64017	dxvk-submit	S	2
+2.045	64020	dxvk-cs	S	2
+2.045	64021	UnityGfxDeviceW	S	1
+2.045	64044	Xenonauts2.exe	R	0
+2.045	64072	Loading.Preload	R	11
+2.045	64074	dxvk-frame	R	0
+2.147	64017	dxvk-submit	S	1
+2.147	64072	Loading.Preload	S	4
+2.250	64017	dxvk-submit	S	2
+2.250	64018	dxvk-queue	S	1
+2.250	64019	dxvk-descriptor	R	0
+2.250	64020	dxvk-cs	S	1
+2.250	64021	UnityGfxDeviceW	S	1
+2.250	64024	audio_client_ma	S	1
+2.353	64017	dxvk-submit	S	2
+2.353	64020	dxvk-cs	S	1
+2.456	64017	dxvk-submit	S	1
+2.456	64018	dxvk-queue	S	1
+2.456	64021	UnityGfxDeviceW	S	1
+2.558	63924	Xenonauts2.exe	S	1
+2.558	64017	dxvk-submit	R	2
+2.558	64018	dxvk-queue	S	1
+2.558	64020	dxvk-cs	S	1
+2.558	64021	UnityGfxDeviceW	R	1
+2.558	64024	audio_client_ma	S	1
+2.661	64017	dxvk-submit	S	2
+2.661	64020	dxvk-cs	S	1
+2.764	64017	dxvk-submit	R	1
+2.764	64019	dxvk-descriptor	S	1
+2.764	64020	dxvk-cs	S	1
+2.764	64024	audio_client_ma	R	0
+2.866	64017	dxvk-submit	S	2
+2.866	64021	UnityGfxDeviceW	S	1
+2.969	64017	dxvk-submit	S	2
+2.969	64018	dxvk-queue	S	1
+2.969	64020	dxvk-cs	S	1
+3.071	63924	Xenonauts2.exe	S	1
+3.071	64017	dxvk-submit	S	1
+3.071	64018	dxvk-queue	S	1
+3.071	64021	UnityGfxDeviceW	S	1
+3.174	63924	Xenonauts2.exe	S	1
+3.174	64017	dxvk-submit	S	2
+3.174	64020	dxvk-cs	S	1
+3.276	63924	Xenonauts2.exe	R	0
+3.276	64017	dxvk-submit	S	1
+3.276	64020	dxvk-cs	S	1
+3.276	64021	UnityGfxDeviceW	R	0
+3.276	64024	audio_client_ma	S	1
+3.379	64017	dxvk-submit	S	3
+3.379	64021	UnityGfxDeviceW	S	1
+3.482	64017	dxvk-submit	S	1
+3.482	64018	dxvk-queue	S	1
+3.482	64020	dxvk-cs	S	1
+3.584	64017	dxvk-submit	S	2
+3.584	64018	dxvk-queue	S	1
+3.584	64021	UnityGfxDeviceW	S	2
+3.687	63924	Xenonauts2.exe	S	1
+3.687	64017	dxvk-submit	R	1
+3.687	64018	dxvk-queue	R	0
+3.687	64020	dxvk-cs	S	1
+3.789	64017	dxvk-submit	S	2
+3.789	64018	dxvk-queue	S	1
+3.789	64020	dxvk-cs	S	1
+3.892	64017	dxvk-submit	S	1
+3.892	64021	UnityGfxDeviceW	S	1
+3.994	64017	dxvk-submit	S	1
+3.994	64020	dxvk-cs	S	2
+4.097	64017	dxvk-submit	S	2
+4.097	64018	dxvk-queue	S	1
+4.097	64021	UnityGfxDeviceW	S	1
+4.199	63924	Xenonauts2.exe	S	1
+4.199	64017	dxvk-submit	S	2
+4.199	64020	dxvk-cs	S	1
+4.302	64017	dxvk-submit	S	1
+4.302	64020	dxvk-cs	R	1
+4.302	64074	dxvk-frame	S	1
+4.404	64017	dxvk-submit	S	2
+4.404	64018	dxvk-queue	S	1
+4.404	64020	dxvk-cs	S	1
+4.404	64021	UnityGfxDeviceW	S	1
+4.404	64024	audio_client_ma	S	1
+4.506	64017	dxvk-submit	S	1
+4.506	64018	dxvk-queue	S	1
+4.609	64017	dxvk-submit	S	2
+4.609	64020	dxvk-cs	R	1
+4.609	64021	UnityGfxDeviceW	S	1
+4.712	63924	Xenonauts2.exe	S	1
+4.712	64017	dxvk-submit	R	2
+4.712	64019	dxvk-descriptor	S	1
+4.815	64017	dxvk-submit	S	2
+4.815	64018	dxvk-queue	S	1
+4.815	64020	dxvk-cs	S	1
+4.815	64021	UnityGfxDeviceW	S	1
+4.917	64017	dxvk-submit	S	2
+4.917	64020	dxvk-cs	S	1
+5.020	64017	dxvk-submit	S	1
+5.122	63924	Xenonauts2.exe	R	1
+5.122	64017	dxvk-submit	S	2
+5.122	64018	dxvk-queue	S	1
+5.122	64020	dxvk-cs	S	1
+5.122	64021	UnityGfxDeviceW	S	1
+5.224	64017	dxvk-submit	S	2
+5.224	64020	dxvk-cs	S	1
+5.224	64021	UnityGfxDeviceW	S	1
+5.224	64024	audio_client_ma	S	1
+5.327	64017	dxvk-submit	S	1
+5.327	64018	dxvk-queue	R	1
+5.327	64020	dxvk-cs	S	1
+5.327	64021	UnityGfxDeviceW	S	1
+5.429	64017	dxvk-submit	S	2
+5.429	64018	dxvk-queue	S	1
+5.429	64020	dxvk-cs	S	1
+5.532	63924	Xenonauts2.exe	S	1
+5.532	64017	dxvk-submit	R	2
+5.532	64020	dxvk-cs	S	1
+5.532	64021	UnityGfxDeviceW	S	1
+5.634	63924	Xenonauts2.exe	R	2
+5.634	64017	dxvk-submit	S	1
+5.737	63924	Xenonauts2.exe	R	10
+5.840	63924	Xenonauts2.exe	S	5
+5.840	64017	dxvk-submit	S	1
+5.840	64024	audio_client_ma	R	0
+5.840	64072	Loading.Preload	S	1
+5.943	63969	Background Job.	S	2
+5.943	64017	dxvk-submit	R	2
+5.943	64018	dxvk-queue	S	1
+5.943	64020	dxvk-cs	S	1
+5.943	64021	UnityGfxDeviceW	S	1
+6.045	64017	dxvk-submit	S	1
+6.148	64017	dxvk-submit	R	2
+6.148	64019	dxvk-descriptor	S	1
+6.148	64020	dxvk-cs	S	1
+6.148	64021	UnityGfxDeviceW	S	1
+6.251	64017	dxvk-submit	S	2
+6.251	64018	dxvk-queue	S	1
+6.353	63924	Content Manager	R	6
+6.353	63969	Background Job.	S	1
+6.353	64018	dxvk-queue	S	1
+6.455	63924	Content Manager	S	10
+6.455	63968	Background Job.	R	0
+6.455	63969	Background Job.	R	1
+6.455	63971	Background Job.	R	0
+6.455	63973	Background Job.	R	0
+6.455	63974	Background Job.	R	0
+6.455	64024	audio_client_ma	S	1
+6.558	63924	Content Manager	S	7
+6.558	64017	dxvk-submit	S	1
+6.558	64020	dxvk-cs	S	1
+6.558	64021	UnityGfxDeviceW	S	1
+6.558	64072	Loading.Preload	R	9
+6.661	63924	Content Manager	S	2
+6.661	63953	Job.Worker 1	R	0
+6.661	64017	dxvk-submit	S	2
+6.661	64020	dxvk-cs	S	1
+6.661	64021	UnityGfxDeviceW	S	1
+6.661	64072	Loading.Preload	R	10
+6.763	63924	Content Manager	S	4
+6.763	64017	dxvk-submit	S	2
+6.763	64018	dxvk-queue	R	0
+6.763	64020	dxvk-cs	S	1
+6.763	64021	UnityGfxDeviceW	R	2
+6.763	64072	Loading.Preload	R	9
+6.866	63924	Content Manager	S	2
+6.866	63954	Job.Worker 2	S	1
+6.866	64017	dxvk-submit	S	1
+6.866	64018	dxvk-queue	S	1
+6.866	64020	dxvk-cs	S	1
+6.866	64021	UnityGfxDeviceW	S	1
+6.866	64072	Loading.Preload	R	11
+6.969	63924	Content Manager	R	2
+6.969	63954	Job.Worker 2	S	1
+6.969	64017	dxvk-submit	S	2
+6.969	64020	dxvk-cs	R	1
+6.969	64021	UnityGfxDeviceW	S	2
+6.969	64072	Loading.Preload	R	9
+7.071	63924	Content Manager	S	3
+7.071	63965	Job.Worker 13	R	0
+7.071	64017	dxvk-submit	S	2
+7.071	64020	dxvk-cs	R	2
+7.071	64021	UnityGfxDeviceW	S	1
+7.071	64024	audio_client_ma	S	1
+7.071	64072	Loading.Preload	R	11
+7.173	63924	Content Manager	R	3
+7.173	63953	Job.Worker 1	S	1
+7.173	64017	dxvk-submit	S	1
+7.173	64018	dxvk-queue	S	1
+7.173	64021	UnityGfxDeviceW	S	1
+7.173	64072	Loading.Preload	S	9
+7.276	63924	Content Manager	R	10
+7.380	63924	Content Manager	R	10
+7.482	63924	Content Manager	R	9
+7.482	64038	[vkps] Update	S	1
+7.584	63924	Content Manager	R	10
+7.584	64024	audio_client_ma	R	0
+7.687	63924	Content Manager	R	11
+7.790	63924	Content Manager	R	9
+7.892	63924	Content Manager	R	11
+7.892	64024	audio_client_ma	S	1
+7.995	63924	Content Manager	R	9
+7.995	64043	cuda-EvtHandlr	R	0
+8.097	63924	Content Manager	R	10
+8.200	63924	Content Manager	R	10
+8.302	63924	Content Manager	R	10
+8.405	63924	Content Manager	R	10
+8.507	63924	Content Manager	R	11
+8.610	63924	Content Manager	R	9
+8.713	63924	Content Manager	R	10
+8.816	63924	Content Manager	R	11
+8.919	63924	Content Manager	R	10
+8.919	64044	Xenonauts2.exe	R	0
+9.022	63924	Content Manager	R	10
+9.124	63924	Content Manager	S	4
+9.124	64017	dxvk-submit	S	1
+9.124	64021	UnityGfxDeviceW	R	5
+9.124	64024	audio_client_ma	S	2
+9.226	63924	Content Manager	S	1
+9.226	63934	AssetGarbageCol	R	1
+9.226	63935	AssetGarbageCol	R	1
+9.226	64021	UnityGfxDeviceW	S	5
+9.226	64028	Xenonauts2.exe	S	1
+9.329	63924	Content Manager	S	9
+9.329	63984	Loading.AsyncRe	R	2
+9.329	64020	dxvk-cs	S	1
+9.329	64072	Loading.Preload	R	3
+9.432	63924	Content Manager	R	1
+9.432	63954	Job.Worker 2	S	3
+9.432	63984	Loading.AsyncRe	S	5
+9.432	64017	dxvk-submit	S	1
+9.432	64072	Loading.Preload	S	9
+9.537	63924	Content Manager	S	9
+9.537	63954	Job.Worker 2	R	0
+9.537	63984	Loading.AsyncRe	R	2
+9.537	64026	Xenonauts2.exe	S	1
+9.537	64072	Loading.Preload	R	7
+9.640	63924	Content Manager	R	1
+9.640	63954	Job.Worker 2	R	2
+9.640	63961	Job.Worker 9	R	0
+9.640	63984	Loading.AsyncRe	S	3
+9.640	64021	UnityGfxDeviceW	S	1
+9.640	64025	Xenonauts2.exe	S	1
+9.640	64072	Loading.Preload	R	10
+9.742	63924	Content Manager	S	2
+9.742	63984	Loading.AsyncRe	R	1
+9.742	64072	Loading.Preload	R	10
+9.742	64074	dxvk-frame	S	1
+9.845	63924	Content Manager	R	6
+9.845	64021	UnityGfxDeviceW	S	1
+9.845	64072	Loading.Preload	S	4
+9.947	63924	Content Manager	R	10
+9.947	64072	Loading.Preload	S	3
+10.051	63924	Content Manager	S	8
+10.051	63954	Job.Worker 2	R	0
+10.051	64020	dxvk-cs	S	1
+10.051	64021	UnityGfxDeviceW	S	1
+10.051	64072	Loading.Preload	R	7
+10.153	63924	Content Manager	S	1
+10.153	63954	Job.Worker 2	S	3
+10.153	63984	Loading.AsyncRe	S	5
+10.153	64017	dxvk-submit	S	1
+10.153	64021	UnityGfxDeviceW	S	1
+10.153	64072	Loading.Preload	S	3
+10.153	64074	dxvk-frame	R	0
+10.256	63924	Content Manager	R	5
+10.256	63954	Job.Worker 2	S	2
+10.256	63984	Loading.AsyncRe	S	3
+10.256	64019	dxvk-descriptor	S	1
+10.256	64074	dxvk-frame	S	1
+10.359	63924	Content Manager	R	11
+10.359	63984	Loading.AsyncRe	S	2
+10.359	64024	audio_client_ma	S	1
+10.359	64072	Loading.Preload	S	4
+10.462	63924	Content Manager	S	4
+10.462	63954	Job.Worker 2	S	2
+10.462	63984	Loading.AsyncRe	R	8
+10.462	64021	UnityGfxDeviceW	S	1
+10.564	63924	Content Manager	R	0
+10.564	63954	Job.Worker 2	S	2
+10.564	63984	Loading.AsyncRe	S	11
+10.667	63924	Content Manager	R	9
+10.667	64021	UnityGfxDeviceW	S	1
+10.667	64072	Loading.Preload	S	1
+10.770	63924	Content Manager	R	11
+10.770	64072	Loading.Preload	S	3
+10.872	63924	Content Manager	R	10
+10.872	63954	Job.Worker 2	S	2
+10.872	63984	Loading.AsyncRe	S	1
+10.872	64020	dxvk-cs	S	1
+10.975	63924	Content Manager	R	10
+10.975	64024	audio_client_ma	S	1
+10.975	64072	Loading.Preload	S	3
+11.078	63924	Content Manager	R	11
+11.078	63954	Job.Worker 2	S	1
+11.078	63984	Loading.AsyncRe	S	5
+11.078	64021	UnityGfxDeviceW	S	1
+11.078	64072	Loading.Preload	S	1
+11.180	63924	Content Manager	R	10
+11.180	64072	Loading.Preload	R	1
+11.282	63924	Content Manager	R	4
+11.282	63954	Job.Worker 2	S	1
+11.282	63984	Loading.AsyncRe	S	6
+11.282	64017	dxvk-submit	S	1
+11.282	64021	UnityGfxDeviceW	R	0
+11.282	64072	Loading.Preload	S	6
+11.385	63924	Content Manager	R	10
+11.385	63954	Job.Worker 2	S	1
+11.385	63984	Loading.AsyncRe	S	3
+11.385	64072	Loading.Preload	S	1
+11.488	63924	Content Manager	R	11
+11.488	63954	Job.Worker 2	S	1
+11.488	63984	Loading.AsyncRe	S	1
+11.488	64021	UnityGfxDeviceW	S	1
+11.488	64072	Loading.Preload	S	1
+11.590	63924	Content Manager	R	10
+11.693	63924	Content Manager	R	10
+11.693	63984	Loading.AsyncRe	R	0
+11.693	64072	Loading.Preload	R	4
+11.796	63924	Content Manager	R	10
+11.796	64062	dxvk-shader-n	S	1
+11.899	63924	Content Manager	R	11
+11.899	63950	Finalizer	S	1
+11.899	64072	Loading.Preload	S	2
+12.003	63924	Content Manager	S	5
+12.003	63953	Job.Worker 1	S	1
+12.003	63984	Loading.AsyncRe	S	1
+12.003	64017	dxvk-submit	R	1
+12.003	64018	dxvk-queue	S	1
+12.003	64021	UnityGfxDeviceW	S	2
+12.003	64024	audio_client_ma	S	1
+12.003	64072	Loading.Preload	S	2
+12.003	64074	dxvk-frame	R	0
+12.105	63924	Content Manager	R	3
+12.105	64020	dxvk-cs	S	1
+12.105	64025	Xenonauts2.exe	S	1
+12.207	63924	Content Manager	R	9
+12.309	63924	Content Manager	R	11
+12.309	64024	audio_client_ma	S	1
+12.412	63924	Content Manager	R	10
+12.412	64009	[vkps] Update	S	1
+12.515	63924	Content Manager	R	10
+12.618	63924	Content Manager	R	10
+12.721	63924	Content Manager	R	11
+12.823	63924	Content Manager	R	10
+12.926	63924	Content Manager	S	9
+12.926	63953	Job.Worker 1	S	1
+12.926	64074	dxvk-frame	R	0
+13.028	63924	Content Manager	S	4
+13.028	64074	dxvk-frame	S	1
+13.131	63924	Content Manager	S	1
+13.131	64021	UnityGfxDeviceW	S	1
+13.131	64074	dxvk-frame	S	1
+13.234	63924	Content Manager	S	3
+13.234	64024	audio_client_ma	S	1
+13.337	63924	Content Manager	S	1
+13.337	63954	Job.Worker 2	S	1
+13.337	64017	dxvk-submit	S	1
+13.337	64028	Xenonauts2.exe	S	1
+13.439	63924	Content Manager	R	2
+13.439	64074	dxvk-frame	S	1
+13.542	63924	Content Manager	R	11
+13.542	64026	Xenonauts2.exe	S	1
+13.645	63924	Content Manager	R	11
+13.747	63924	Content Manager	R	9
+13.747	63934	AssetGarbageCol	S	1
+13.747	63935	AssetGarbageCol	S	2
+13.747	64020	dxvk-cs	S	1
+13.747	64021	UnityGfxDeviceW	S	1
+13.849	63924	Content Manager	R	10
+13.952	63924	Content Manager	R	10
+13.952	64072	Loading.Preload	S	1
+14.054	63924	Content Manager	R	10
+14.054	64021	UnityGfxDeviceW	R	0
+14.157	63924	Content Manager	R	10
+14.260	63924	Content Manager	R	10
+14.260	64015	Xenonauts2.exe	S	1
+14.260	64044	Xenonauts2.exe	S	1
+14.362	63924	Content Manager	R	10
+14.465	63924	Content Manager	R	11
+14.465	63984	Loading.AsyncRe	S	1
+14.465	64021	UnityGfxDeviceW	S	1
+14.465	64024	audio_client_ma	S	1
+14.465	64072	Loading.Preload	R	1
+14.568	63924	Content Manager	S	1
+14.568	63954	Job.Worker 2	S	1
+14.568	63984	Loading.AsyncRe	S	1
+14.568	64020	dxvk-cs	S	1
+14.568	64024	audio_client_ma	S	1
+14.568	64072	Loading.Preload	R	10
+14.568	64074	dxvk-frame	S	2
+14.671	63924	Content Manager	S	1
+14.671	63984	Loading.AsyncRe	S	3
+14.671	64021	UnityGfxDeviceW	S	1
+14.671	64072	Loading.Preload	S	11
+14.671	64074	dxvk-frame	S	1
+14.774	63924	Content Manager	R	11
+14.774	63954	Job.Worker 2	S	1
+14.774	63984	Loading.AsyncRe	S	1
+14.774	64021	UnityGfxDeviceW	S	1
+14.774	64072	Loading.Preload	S	4
+14.877	63924	Content Manager	R	10
+14.877	63954	Job.Worker 2	R	0
+14.877	63984	Loading.AsyncRe	R	0
+14.877	64072	Loading.Preload	R	8
+14.979	63924	Content Manager	R	9
+14.979	63954	Job.Worker 2	S	1
+14.979	63984	Loading.AsyncRe	S	7
+14.979	64021	UnityGfxDeviceW	S	1
+14.979	64072	Loading.Preload	S	3
+15.082	63924	Content Manager	R	10
+15.082	63984	Loading.AsyncRe	R	0
+15.082	64020	dxvk-cs	S	1
+15.082	64028	Xenonauts2.exe	S	1
+15.082	64072	Loading.Preload	S	7
+15.185	63924	Content Manager	S	4
+15.185	63953	Job.Worker 1	S	1
+15.185	63954	Job.Worker 2	S	1
+15.185	63984	Loading.AsyncRe	S	1
+15.185	64017	dxvk-submit	S	1
+15.185	64021	UnityGfxDeviceW	S	1
+15.185	64072	Loading.Preload	R	9
+15.185	64074	dxvk-frame	R	1
+15.288	63924	Content Manager	S	3
+15.288	63984	Loading.AsyncRe	S	1
+15.288	64017	dxvk-submit	S	1
+15.288	64072	Loading.Preload	R	10
+15.391	63924	Content Manager	R	8
+15.391	63984	Loading.AsyncRe	S	1
+15.391	64021	UnityGfxDeviceW	S	1
+15.391	64026	Xenonauts2.exe	S	1
+15.391	64072	Loading.Preload	R	4
+15.494	63924	Content Manager	R	10
+15.494	63954	Job.Worker 2	S	2
+15.494	63984	Loading.AsyncRe	S	2
+15.494	64018	dxvk-queue	S	1
+15.494	64021	UnityGfxDeviceW	S	1
+15.494	64072	Loading.Preload	R	2
+15.597	63924	Content Manager	S	7
+15.597	63954	Job.Worker 2	S	3
+15.597	63984	Loading.AsyncRe	R	6
+15.597	64020	dxvk-cs	S	1
+15.597	64021	UnityGfxDeviceW	S	1
+15.597	64024	audio_client_ma	S	1
+15.597	64072	Loading.Preload	S	2
+15.700	63924	Content Manager	R	6
+15.700	63954	Job.Worker 2	R	1
+15.700	63984	Loading.AsyncRe	S	3
+15.700	64072	Loading.Preload	S	2
+15.803	63924	Content Manager	S	8
+15.803	63954	Job.Worker 2	S	1
+15.803	63984	Loading.AsyncRe	R	4
+15.803	64021	UnityGfxDeviceW	S	1
+15.803	64072	Loading.Preload	S	3
+15.905	63954	Job.Worker 2	S	2
+15.905	63984	Loading.AsyncRe	R	11
+16.010	63924	Content Manager	R	1
+16.010	63954	Job.Worker 2	R	2
+16.010	63984	Loading.AsyncRe	S	9
+16.010	64018	dxvk-queue	R	0
+16.010	64021	UnityGfxDeviceW	S	1
+16.010	64072	Loading.Preload	S	1
+16.113	63924	Content Manager	R	10
+16.113	63954	Job.Worker 2	S	2
+16.113	63984	Loading.AsyncRe	R	5
+16.113	64072	Loading.Preload	R	4
+16.215	63924	Content Manager	R	10
+16.215	63954	Job.Worker 2	S	1
+16.215	63984	Loading.AsyncRe	S	4
+16.215	64020	dxvk-cs	S	1
+16.215	64021	UnityGfxDeviceW	R	1
+16.215	64072	Loading.Preload	R	3
+16.319	63924	Content Manager	R	9
+16.319	64009	[vkps] Update	S	1
+16.319	64021	UnityGfxDeviceW	S	1
+16.319	64072	Loading.Preload	S	7
+16.421	63924	Content Manager	R	10
+16.421	64072	Loading.Preload	R	9
+16.524	63924	Content Manager	R	6
+16.524	63955	Job.Worker 3	S	1
+16.524	64017	dxvk-submit	S	1
+16.524	64021	UnityGfxDeviceW	S	1
+16.524	64028	Xenonauts2.exe	S	1
+16.524	64072	Loading.Preload	R	9
+16.626	63924	Content Manager	R	1
+16.626	63953	Job.Worker 1	R	0
+16.626	63954	Job.Worker 2	R	0
+16.626	64024	audio_client_ma	S	1
+16.626	64072	Loading.Preload	R	10
+16.729	63924	Content Manager	S	2
+16.729	64021	UnityGfxDeviceW	S	1
+16.729	64072	Loading.Preload	R	11
+16.832	63924	Content Manager	S	1
+16.832	63953	Job.Worker 1	S	1
+16.832	64020	dxvk-cs	S	1
+16.832	64072	Loading.Preload	R	10
+16.935	63924	Content Manager	S	1
+16.935	64072	Loading.Preload	R	10
+17.038	63924	Content Manager	S	2
+17.038	64017	dxvk-submit	S	1
+17.038	64021	UnityGfxDeviceW	S	1
+17.038	64072	Loading.Preload	R	10
+17.140	63924	Content Manager	S	1
+17.140	63953	Job.Worker 1	R	0
+17.140	63965	Job.Worker 13	R	0
+17.140	64018	dxvk-queue	S	1
+17.140	64072	Loading.Preload	R	10
+17.242	63924	Content Manager	R	0
+17.242	64017	dxvk-submit	S	1
+17.242	64020	dxvk-cs	S	1
+17.242	64021	UnityGfxDeviceW	S	1
+17.242	64072	Loading.Preload	R	10
+17.345	63924	Content Manager	S	3
+17.345	63984	Loading.AsyncRe	S	1
+17.345	64021	UnityGfxDeviceW	S	2
+17.345	64024	audio_client_ma	S	1
+17.345	64026	Xenonauts2.exe	S	1
+17.345	64072	Loading.Preload	R	9
+17.448	63924	Content Manager	R	6
+17.448	63954	Job.Worker 2	S	1
+17.448	63956	Job.Worker 4	S	1
+17.448	63984	Loading.AsyncRe	S	1
+17.448	64020	dxvk-cs	S	1
+17.448	64021	UnityGfxDeviceW	S	1
+17.448	64025	Xenonauts2.exe	R	0
+17.448	64026	Xenonauts2.exe	R	0
+17.448	64072	Loading.Preload	R	7
+17.551	63924	Content Manager	S	3
+17.551	63984	Loading.AsyncRe	R	2
+17.551	64019	dxvk-descriptor	S	1
+17.551	64021	UnityGfxDeviceW	S	1
+17.551	64072	Loading.Preload	R	11
+17.551	64074	dxvk-frame	S	1
+17.654	63924	Content Manager	R	4
+17.654	63954	Job.Worker 2	S	2
+17.654	63984	Loading.AsyncRe	S	4
+17.654	64017	dxvk-submit	S	1
+17.654	64021	UnityGfxDeviceW	S	1
+17.654	64024	audio_client_ma	S	1
+17.654	64072	Loading.Preload	S	5
+17.756	63924	Content Manager	R	10
+17.859	63924	Content Manager	S	10
+17.859	63933	AssetGarbageCol	S	1
+17.859	63935	AssetGarbageCol	S	2
+17.859	63936	AssetGarbageCol	S	1
+17.859	63937	AssetGarbageCol	R	6
+17.859	63950	Finalizer	S	1
+17.962	63924	Content Manager	R	2
+17.962	63937	AssetGarbageCol	S	7
+17.962	63938	AssetGarbageCol	S	1
+17.962	63983	BatchDeleteObje	S	1
+17.962	63984	Loading.AsyncRe	S	1
+17.962	64021	UnityGfxDeviceW	R	1
+18.064	63924	Content Manager	S	7
+18.064	63933	AssetGarbageCol	S	2
+18.064	63939	AssetGarbageCol	R	9
+18.064	63945	AssetGarbageCol	S	1
+18.064	64024	audio_client_ma	R	0
+18.167	63924	Content Manager	R	6
+18.167	63939	AssetGarbageCol	S	4
+18.167	63984	Loading.AsyncRe	S	1
+18.167	64021	UnityGfxDeviceW	S	1
+18.167	64028	Xenonauts2.exe	S	1
+18.167	64072	Loading.Preload	R	2
+18.270	63924	Content Manager	S	9
+18.270	63954	Job.Worker 2	S	1
+18.270	63984	Loading.AsyncRe	S	3
+18.270	64015	Xenonauts2.exe	R	0
+18.270	64020	dxvk-cs	S	1
+18.270	64021	UnityGfxDeviceW	S	1
+18.270	64072	Loading.Preload	R	5
+18.372	63924	Content Manager	R	4
+18.372	64072	Loading.Preload	R	10
+18.474	63924	Content Manager	R	3
+18.474	63984	Loading.AsyncRe	S	2
+18.474	64018	dxvk-queue	S	1
+18.474	64021	UnityGfxDeviceW	S	1
+18.474	64072	Loading.Preload	S	10
+18.576	63924	Content Manager	R	4
+18.576	64072	Loading.Preload	S	1
+18.576	64074	dxvk-frame	S	1
+18.679	63924	Content Manager	R	11
+18.782	63924	Content Manager	R	10
+18.884	63924	Content Manager	R	10
+18.884	64024	audio_client_ma	S	1
+18.884	64026	Xenonauts2.exe	S	1
+18.986	63924	Content Manager	R	10
+19.089	63924	Content Manager	R	10
+19.089	63954	Job.Worker 2	S	1
+19.192	63924	Content Manager	R	10
+19.294	63924	Content Manager	R	11
+19.397	63924	Content Manager	R	9
+19.397	64024	audio_client_ma	S	1
+19.500	63924	Content Manager	R	11
+19.500	63955	Job.Worker 3	R	0
+19.603	63924	Content Manager	R	10
+19.603	64020	dxvk-cs	S	1
+19.603	64028	Xenonauts2.exe	S	1
+19.705	63924	Content Manager	R	10
+19.807	63924	Content Manager	R	11
+19.910	63924	Content Manager	R	10
+19.910	64024	audio_client_ma	R	0
+20.013	63924	Content Manager	R	10
+20.013	64024	audio_client_ma	S	1
+20.116	63924	Content Manager	R	10
+20.116	64026	Xenonauts2.exe	S	1
+20.218	63924	Content Manager	R	11
+20.321	63924	Content Manager	R	10
+20.423	63924	Content Manager	R	10
+20.526	63924	Content Manager	R	10
+20.526	64044	Xenonauts2.exe	S	1
+20.628	63924	Content Manager	R	10
+20.731	63924	Content Manager	R	11
+20.834	63924	Content Manager	R	10
+20.834	64024	audio_client_ma	R	0
+20.936	63924	Content Manager	R	10
+20.936	64024	audio_client_ma	S	1
+21.039	63924	Content Manager	R	10
+21.039	64028	Xenonauts2.exe	S	1
+21.141	63924	Content Manager	R	11
+21.244	63924	Content Manager	R	10
+21.346	63924	Content Manager	R	10
+21.346	64026	Xenonauts2.exe	S	1
+21.449	63924	Content Manager	R	10
+21.551	63924	Content Manager	R	10
+21.655	63924	Content Manager	R	11
+21.758	63924	Content Manager	R	10
+21.861	63924	Content Manager	R	10
+21.964	63924	Content Manager	R	10
+21.964	64024	audio_client_ma	S	1
+21.964	64025	Xenonauts2.exe	S	1
+22.066	63924	Content Manager	R	11
+22.169	63924	Content Manager	R	10
+22.272	63924	Content Manager	R	10
+22.374	63924	Content Manager	R	10
+22.374	64028	Xenonauts2.exe	S	1
+22.477	63924	Content Manager	R	11
+22.477	64025	Xenonauts2.exe	S	1
+22.580	63924	Content Manager	R	10
+22.580	64015	Xenonauts2.exe	S	1
+22.683	63924	Content Manager	R	10
+22.683	64026	Xenonauts2.exe	S	1
+22.785	63924	Content Manager	R	10
+22.888	63924	Content Manager	R	10
+22.888	64024	audio_client_ma	S	1
+22.990	63924	Content Manager	R	10
+23.093	63924	Content Manager	R	10
+23.093	64072	Loading.Preload	R	3
+23.196	63924	Content Manager	R	10
+23.196	64021	UnityGfxDeviceW	S	1
+23.196	64072	Loading.Preload	S	6
+23.299	63924	Content Manager	R	10
+23.299	63984	Loading.AsyncRe	S	1
+23.299	64072	Loading.Preload	R	4
+23.299	64074	dxvk-frame	S	1
+23.401	63924	Content Manager	R	7
+23.401	63953	Job.Worker 1	S	1
+23.401	63954	Job.Worker 2	S	1
+23.401	64021	UnityGfxDeviceW	S	1
+23.401	64072	Loading.Preload	R	10
+23.504	63924	Content Manager	R	7
+23.504	63984	Loading.AsyncRe	S	1
+23.504	64020	dxvk-cs	S	1
+23.504	64021	UnityGfxDeviceW	S	1
+23.504	64024	audio_client_ma	R	1
+23.504	64072	Loading.Preload	R	10
+23.504	64074	dxvk-frame	S	2
+23.606	63924	Content Manager	R	7
+23.606	64017	dxvk-submit	S	1
+23.606	64020	dxvk-cs	S	1
+23.606	64021	UnityGfxDeviceW	S	1
+23.606	64072	Loading.Preload	R	10
+23.709	63924	Content Manager	S	4
+23.709	63984	Loading.AsyncRe	S	1
+23.709	64017	dxvk-submit	S	1
+23.709	64021	UnityGfxDeviceW	S	1
+23.709	64072	Loading.Preload	R	10
+23.709	64074	dxvk-frame	R	1
+23.812	63924	Content Manager	R	5
+23.812	63954	Job.Worker 2	S	1
+23.812	63984	Loading.AsyncRe	S	2
+23.812	64015	Xenonauts2.exe	S	1
+23.812	64021	UnityGfxDeviceW	S	1
+23.812	64072	Loading.Preload	S	8
+23.812	64074	dxvk-frame	S	1
+23.812	64155	Content Manager	S	1
+23.914	63924	Content Manager	R	10
+23.914	63984	Loading.AsyncRe	R	2
+23.914	64028	Xenonauts2.exe	S	1
+23.914	64072	Loading.Preload	R	3
+24.018	63924	Content Manager	S	4
+24.018	64025	Xenonauts2.exe	R	0
+24.018	64026	Xenonauts2.exe	R	0
+24.018	64072	Loading.Preload	R	11
+24.121	63924	Content Manager	R	6
+24.121	63953	Job.Worker 1	S	1
+24.121	63984	Loading.AsyncRe	R	2
+24.121	64021	UnityGfxDeviceW	S	3
+24.121	64024	audio_client_ma	S	1
+24.121	64026	Xenonauts2.exe	S	1
+24.121	64038	[vkps] Update	S	1
+24.121	64072	Loading.Preload	S	6
+24.121	64074	dxvk-frame	S	1
+24.224	63924	Content Manager	S	2
+24.224	63984	Loading.AsyncRe	S	1
+24.224	64020	dxvk-cs	S	1
+24.224	64021	UnityGfxDeviceW	S	2
+24.224	64074	dxvk-frame	S	1
+24.327	63924	Content Manager	S	1
+24.327	63984	Loading.AsyncRe	S	3
+24.327	64021	UnityGfxDeviceW	S	5
+24.430	63924	Content Manager	S	1
+24.430	64021	UnityGfxDeviceW	S	1
+24.430	64155	Content Manager	R	0
+24.533	63924	Content Manager	R	3
+24.533	63954	Job.Worker 2	S	1
+24.533	64017	dxvk-submit	S	1
+24.533	64021	UnityGfxDeviceW	S	1
+24.636	63924	Content Manager	R	11
+24.738	63924	Content Manager	R	9
+24.841	63924	Content Manager	R	10
+24.841	64009	[vkps] Update	S	1
+24.943	63924	Content Manager	R	10
+24.943	64044	Xenonauts2.exe	S	1
+25.046	63924	Content Manager	R	11
+25.148	63924	Content Manager	R	10
+25.148	63983	BatchDeleteObje	S	1
+25.252	63924	Content Manager	R	10
+25.252	64024	audio_client_ma	S	1
+25.252	64028	Xenonauts2.exe	S	1
+25.354	63924	Content Manager	R	10
+25.354	64049	Xenonauts2.exe	S	1
+25.457	63924	Content Manager	R	10
+25.457	64024	audio_client_ma	S	1
+25.457	64026	Xenonauts2.exe	S	1
+25.560	63924	Content Manager	R	11
+25.662	63924	Content Manager	R	10
+25.765	63924	Content Manager	R	10
+25.765	64155	Content Manager	S	1
+25.867	63924	Content Manager	R	11
+25.970	63924	Content Manager	R	10
+26.073	63924	Content Manager	R	10
+26.175	63924	Content Manager	R	9
+26.175	63953	Job.Worker 1	S	1
+26.175	63954	Job.Worker 2	S	1
+26.175	63955	Job.Worker 3	S	2
+26.175	63956	Job.Worker 4	S	1
+26.175	64020	dxvk-cs	S	1
+26.175	64021	UnityGfxDeviceW	S	2
+26.175	64055	dxvk-shader-l	R	2
+26.175	64056	dxvk-shader-l	R	2
+26.175	64057	dxvk-shader-l	R	1
+26.175	64058	dxvk-shader-l	R	1
+26.175	64059	dxvk-shader-n	S	2
+26.278	63924	Content Manager	R	10
+26.278	63957	Job.Worker 5	S	1
+26.278	63961	Job.Worker 9	S	1
+26.278	64021	UnityGfxDeviceW	S	2
+26.278	64057	dxvk-shader-l	S	1
+26.278	64074	dxvk-frame	S	1
+26.381	63924	Content Manager	R	10
+26.483	63924	Content Manager	R	10
+26.483	64024	audio_client_ma	S	1
+26.586	63924	Content Manager	R	10
+26.688	63924	Content Manager	R	10
+26.688	64026	Xenonauts2.exe	S	1
+26.791	63924	Content Manager	R	11
+26.791	64028	Xenonauts2.exe	S	1
+26.894	63924	Content Manager	R	10
+26.996	63924	Content Manager	R	10
+27.099	63924	Content Manager	R	10
+27.099	63953	Job.Worker 1	S	1
+27.099	63954	Job.Worker 2	S	1
+27.099	63984	Loading.AsyncRe	S	1
+27.201	63924	Content Manager	R	10
+27.303	63924	Content Manager	R	10
+27.407	63924	Content Manager	R	10
+27.509	63924	Content Manager	R	11
+27.509	64024	audio_client_ma	S	1
+27.612	63924	Content Manager	R	11
+27.715	63924	Content Manager	R	9
+27.715	63954	Job.Worker 2	R	0
+27.715	63955	Job.Worker 3	S	1
+27.715	63957	Job.Worker 5	S	1
+27.715	63958	Job.Worker 6	S	1
+27.715	63959	Job.Worker 7	S	1
+27.715	63960	Job.Worker 8	S	1
+27.715	64020	dxvk-cs	S	1
+27.715	64021	UnityGfxDeviceW	R	1
+27.818	63924	Content Manager	R	11
+27.818	63953	Job.Worker 1	S	1
+27.818	63956	Job.Worker 4	S	1
+27.818	64021	UnityGfxDeviceW	S	1
+27.818	64026	Xenonauts2.exe	S	1
+27.921	63924	Content Manager	R	10
+27.921	63963	Job.Worker 11	S	1
+27.921	64024	audio_client_ma	S	1
+28.024	63924	Content Manager	S	7
+28.024	63952	Job.Worker 0	S	1
+28.024	63953	Job.Worker 1	S	1
+28.024	63954	Job.Worker 2	S	3
+28.024	63955	Job.Worker 3	S	2
+28.024	63956	Job.Worker 4	S	1
+28.024	63957	Job.Worker 5	S	1
+28.024	63958	Job.Worker 6	S	1
+28.024	63959	Job.Worker 7	S	1
+28.024	63960	Job.Worker 8	S	2
+28.024	63961	Job.Worker 9	S	1
+28.024	63962	Job.Worker 10	S	1
+28.024	63963	Job.Worker 11	S	1
+28.024	63964	Job.Worker 12	S	1
+28.024	63965	Job.Worker 13	S	1
+28.024	63966	Job.Worker 14	S	1
+28.024	64020	dxvk-cs	S	3
+28.024	64021	UnityGfxDeviceW	S	6
+28.024	64055	dxvk-shader-l	S	1
+28.024	64056	dxvk-shader-l	S	1
+28.024	64057	dxvk-shader-l	S	1
+28.024	64058	dxvk-shader-l	S	1
+28.024	64060	dxvk-shader-n	S	1
+28.024	64062	dxvk-shader-n	S	1
+28.024	64074	dxvk-frame	S	1
+28.126	63924	Content Manager	S	5
+28.126	63953	Job.Worker 1	S	1
+28.126	63954	Job.Worker 2	S	2
+28.126	63955	Job.Worker 3	S	2
+28.126	63956	Job.Worker 4	S	1
+28.126	63957	Job.Worker 5	S	1
+28.126	63958	Job.Worker 6	S	1
+28.126	63959	Job.Worker 7	S	1
+28.126	63961	Job.Worker 9	S	1
+28.126	63962	Job.Worker 10	S	1
+28.126	63964	Job.Worker 12	S	1
+28.126	63965	Job.Worker 13	S	1
+28.126	64018	dxvk-queue	S	1
+28.126	64019	dxvk-descriptor	S	1
+28.126	64020	dxvk-cs	S	1
+28.126	64021	UnityGfxDeviceW	S	4
+28.126	64074	dxvk-frame	R	1
+28.229	63924	Content Manager	S	4
+28.229	63953	Job.Worker 1	S	3
+28.229	63954	Job.Worker 2	S	2
+28.229	63955	Job.Worker 3	S	2
+28.229	63956	Job.Worker 4	S	2
+28.229	63957	Job.Worker 5	S	1
+28.229	63958	Job.Worker 6	S	1
+28.229	63959	Job.Worker 7	S	1
+28.229	63960	Job.Worker 8	S	1
+28.229	63962	Job.Worker 10	S	1
+28.229	63963	Job.Worker 11	S	1
+28.229	63964	Job.Worker 12	S	1
+28.229	63965	Job.Worker 13	S	1
+28.229	63966	Job.Worker 14	S	1
+28.229	64009	[vkps] Update	R	0
+28.229	64017	dxvk-submit	S	2
+28.229	64020	dxvk-cs	S	2
+28.229	64021	UnityGfxDeviceW	S	5
+28.229	64074	dxvk-frame	S	1
+28.332	63924	Content Manager	S	5
+28.332	63952	Job.Worker 0	S	2
+28.332	63953	Job.Worker 1	S	1
+28.332	63954	Job.Worker 2	S	2
+28.332	63955	Job.Worker 3	S	1
+28.332	63956	Job.Worker 4	S	1
+28.332	63957	Job.Worker 5	S	1
+28.332	63958	Job.Worker 6	S	1
+28.332	63959	Job.Worker 7	S	1
+28.332	63960	Job.Worker 8	S	1
+28.332	63961	Job.Worker 9	S	1
+28.332	63962	Job.Worker 10	S	2
+28.332	63963	Job.Worker 11	S	1
+28.332	64020	dxvk-cs	S	1
+28.332	64021	UnityGfxDeviceW	S	4
+28.435	63924	Content Manager	S	3
+28.435	63953	Job.Worker 1	S	1
+28.435	63954	Job.Worker 2	S	1
+28.435	63955	Job.Worker 3	S	1
+28.435	63956	Job.Worker 4	S	1
+28.435	63957	Job.Worker 5	S	1
+28.435	63958	Job.Worker 6	S	1
+28.435	63960	Job.Worker 8	S	1
+28.435	63961	Job.Worker 9	S	1
+28.435	63964	Job.Worker 12	S	2
+28.435	63966	Job.Worker 14	S	1
+28.435	64018	dxvk-queue	S	1
+28.435	64020	dxvk-cs	S	1
+28.435	64021	UnityGfxDeviceW	S	3
+28.435	64028	Xenonauts2.exe	S	1
+28.539	63924	Content Manager	S	4
+28.539	63952	Job.Worker 0	S	1
+28.539	63953	Job.Worker 1	S	1
+28.539	63954	Job.Worker 2	S	1
+28.539	63955	Job.Worker 3	S	1
+28.539	63956	Job.Worker 4	S	1
+28.539	63957	Job.Worker 5	S	1
+28.539	63958	Job.Worker 6	S	1
+28.539	63959	Job.Worker 7	S	1
+28.539	63960	Job.Worker 8	S	1
+28.539	63962	Job.Worker 10	S	1
+28.539	63963	Job.Worker 11	S	1
+28.539	63965	Job.Worker 13	S	1
+28.539	63966	Job.Worker 14	S	1
+28.539	64018	dxvk-queue	R	0
+28.539	64019	dxvk-descriptor	S	1
+28.539	64020	dxvk-cs	S	1
+28.539	64021	UnityGfxDeviceW	S	3
+28.539	64074	dxvk-frame	S	1
+28.642	63924	Content Manager	R	3
+28.642	63952	Job.Worker 0	R	0
+28.642	63953	Job.Worker 1	S	1
+28.642	63954	Job.Worker 2	S	1
+28.642	63955	Job.Worker 3	S	1
+28.642	63956	Job.Worker 4	R	0
+28.642	63957	Job.Worker 5	R	1
+28.642	63958	Job.Worker 6	R	1
+28.642	63959	Job.Worker 7	S	1
+28.642	63961	Job.Worker 9	S	1
+28.642	63963	Job.Worker 11	S	1
+28.642	63964	Job.Worker 12	S	1
+28.642	63965	Job.Worker 13	S	1
+28.642	64020	dxvk-cs	S	2
+28.642	64021	UnityGfxDeviceW	R	3
+28.642	64026	Xenonauts2.exe	S	1
+28.745	63924	Content Manager	R	6
+28.745	63954	Job.Worker 2	S	1
+28.745	63955	Job.Worker 3	S	1
+28.745	63956	Job.Worker 4	S	1
+28.745	63960	Job.Worker 8	S	1
+28.745	63961	Job.Worker 9	S	1
+28.745	63962	Job.Worker 10	S	1
+28.745	64020	dxvk-cs	R	1
+28.745	64021	UnityGfxDeviceW	R	2
+28.745	64024	audio_client_ma	R	0
+28.745	64038	[vkps] Update	S	1
+28.848	63924	Content Manager	R	11
+28.848	63952	Job.Worker 0	S	1
+28.848	63953	Job.Worker 1	S	1
+28.848	63954	Job.Worker 2	S	1
+28.848	63956	Job.Worker 4	S	1
+28.848	63957	Job.Worker 5	S	1
+28.848	63958	Job.Worker 6	S	1
+28.848	63959	Job.Worker 7	S	1
+28.848	63965	Job.Worker 13	S	1
+28.848	63966	Job.Worker 14	S	1
+28.848	64017	dxvk-submit	S	1
+28.848	64021	UnityGfxDeviceW	S	2
+28.951	63924	Content Manager	R	10
+28.951	63955	Job.Worker 3	S	1
+28.951	63964	Job.Worker 12	S	1
+28.951	64020	dxvk-cs	S	1
+28.951	64021	UnityGfxDeviceW	S	1
+29.053	63924	Content Manager	S	9
+29.053	63953	Job.Worker 1	S	1
+29.053	63954	Job.Worker 2	R	1
+29.053	63956	Job.Worker 4	S	1
+29.053	63958	Job.Worker 6	S	1
+29.053	63963	Job.Worker 11	S	1
+29.053	64019	dxvk-descriptor	R	0
+29.053	64020	dxvk-cs	R	0
+29.053	64021	UnityGfxDeviceW	R	0
+29.156	63924	Content Manager	R	10
+29.156	63953	Job.Worker 1	S	1
+29.156	63954	Job.Worker 2	R	1
+29.156	63955	Job.Worker 3	S	2
+29.156	63956	Job.Worker 4	S	1
+29.156	63957	Job.Worker 5	R	1
+29.156	63958	Job.Worker 6	R	1
+29.156	63959	Job.Worker 7	S	2
+29.156	63960	Job.Worker 8	S	1
+29.156	63961	Job.Worker 9	S	1
+29.156	63962	Job.Worker 10	S	1
+29.156	64018	dxvk-queue	S	1
+29.156	64020	dxvk-cs	R	1
+29.156	64021	UnityGfxDeviceW	R	3
+29.156	64024	audio_client_ma	S	2
+29.156	64061	dxvk-shader-n	S	1
+29.259	63924	Content Manager	R	5
+29.259	63952	Job.Worker 0	R	1
+29.259	63953	Job.Worker 1	S	2
+29.259	63954	Job.Worker 2	R	2
+29.259	63955	Job.Worker 3	S	1
+29.259	63956	Job.Worker 4	S	1
+29.259	63957	Job.Worker 5	R	1
+29.259	63959	Job.Worker 7	S	1
+29.259	63961	Job.Worker 9	S	2
+29.259	63962	Job.Worker 10	S	1
+29.259	63963	Job.Worker 11	S	1
+29.259	63964	Job.Worker 12	S	1
+29.259	63965	Job.Worker 13	S	1
+29.259	63966	Job.Worker 14	S	1
+29.259	64020	dxvk-cs	R	1
+29.259	64021	UnityGfxDeviceW	R	3
+29.362	63924	Content Manager	R	4
+29.362	63953	Job.Worker 1	S	1
+29.362	63955	Job.Worker 3	S	1
+29.362	63957	Job.Worker 5	S	1
+29.362	63958	Job.Worker 6	S	1
+29.362	63960	Job.Worker 8	S	1
+29.362	63964	Job.Worker 12	R	0
+29.362	64019	dxvk-descriptor	S	1
+29.362	64020	dxvk-cs	R	1
+29.362	64021	UnityGfxDeviceW	R	3
+29.465	63924	Content Manager	S	3
+29.465	63953	Job.Worker 1	S	1
+29.465	63954	Job.Worker 2	S	2
+29.465	63955	Job.Worker 3	S	1
+29.465	63956	Job.Worker 4	S	1
+29.465	63957	Job.Worker 5	S	1
+29.465	63958	Job.Worker 6	S	1
+29.465	63959	Job.Worker 7	S	1
+29.465	63960	Job.Worker 8	S	1
+29.465	63961	Job.Worker 9	S	1
+29.465	63962	Job.Worker 10	S	1
+29.465	63963	Job.Worker 11	S	1
+29.465	63964	Job.Worker 12	S	1
+29.465	63965	Job.Worker 13	S	1
+29.465	64020	dxvk-cs	S	2
+29.465	64021	UnityGfxDeviceW	S	3
+29.568	63924	Content Manager	S	4
+29.568	63952	Job.Worker 0	S	1
+29.568	63953	Job.Worker 1	S	1
+29.568	63954	Job.Worker 2	S	1
+29.568	63955	Job.Worker 3	S	1
+29.568	63956	Job.Worker 4	S	1
+29.568	63957	Job.Worker 5	S	1
+29.568	63960	Job.Worker 8	S	1
+29.568	63961	Job.Worker 9	S	1
+29.568	63963	Job.Worker 11	S	1
+29.568	63965	Job.Worker 13	S	1
+29.568	63966	Job.Worker 14	S	2
+29.568	64017	dxvk-submit	S	1
+29.568	64020	dxvk-cs	S	1
+29.568	64021	UnityGfxDeviceW	S	4
+29.568	64026	Xenonauts2.exe	S	1
+29.671	63924	Content Manager	S	4
+29.671	63953	Job.Worker 1	S	1
+29.671	63954	Job.Worker 2	S	2
+29.671	63955	Job.Worker 3	S	2
+29.671	63956	Job.Worker 4	S	1
+29.671	63957	Job.Worker 5	S	1
+29.671	63958	Job.Worker 6	S	1
+29.671	63959	Job.Worker 7	S	1
+29.671	63960	Job.Worker 8	S	1
+29.671	63962	Job.Worker 10	S	1
+29.671	63963	Job.Worker 11	S	1
+29.671	63964	Job.Worker 12	S	1
+29.671	63965	Job.Worker 13	S	1
+29.671	64020	dxvk-cs	S	3
+29.671	64021	UnityGfxDeviceW	S	4
+29.671	64028	Xenonauts2.exe	S	1
+29.775	63924	Content Manager	R	5
+29.775	63952	Job.Worker 0	R	1
+29.775	63953	Job.Worker 1	S	2
+29.775	63954	Job.Worker 2	S	2
+29.775	63955	Job.Worker 3	S	1
+29.775	63956	Job.Worker 4	S	1
+29.775	63957	Job.Worker 5	S	1
+29.775	63958	Job.Worker 6	S	1
+29.775	63959	Job.Worker 7	S	1
+29.775	63960	Job.Worker 8	S	1
+29.775	63961	Job.Worker 9	S	1
+29.775	63962	Job.Worker 10	S	1
+29.775	63963	Job.Worker 11	S	1
+29.775	63965	Job.Worker 13	R	0
+29.775	63966	Job.Worker 14	S	1
+29.775	64017	dxvk-submit	S	1
+29.775	64018	dxvk-queue	S	1
+29.775	64019	dxvk-descriptor	S	1
+29.775	64020	dxvk-cs	S	1
+29.775	64021	UnityGfxDeviceW	R	5
+29.775	64057	dxvk-shader-l	S	1
+29.775	64064	dxvk-shader-n	S	1
+29.878	63924	Content Manager	R	4
+29.878	63953	Job.Worker 1	S	2
+29.878	63954	Job.Worker 2	R	1
+29.878	63955	Job.Worker 3	R	1
+29.878	63956	Job.Worker 4	R	2
+29.878	63957	Job.Worker 5	S	1
+29.878	63958	Job.Worker 6	S	1
+29.878	63959	Job.Worker 7	S	2
+29.878	63960	Job.Worker 8	S	1
+29.878	63961	Job.Worker 9	S	1
+29.878	63962	Job.Worker 10	S	2
+29.878	63963	Job.Worker 11	S	1
+29.878	63964	Job.Worker 12	S	2
+29.878	63965	Job.Worker 13	R	1
+29.878	63966	Job.Worker 14	S	1
+29.878	64020	dxvk-cs	S	2
+29.878	64021	UnityGfxDeviceW	R	4
+29.981	63924	Content Manager	S	3
+29.981	63952	Job.Worker 0	S	1
+29.981	63953	Job.Worker 1	S	1
+29.981	63954	Job.Worker 2	S	2
+29.981	63955	Job.Worker 3	R	2
+29.981	63956	Job.Worker 4	S	1
+29.981	63957	Job.Worker 5	S	1
+29.981	63958	Job.Worker 6	S	1
+29.981	63960	Job.Worker 8	S	1
+29.981	63961	Job.Worker 9	S	1
+29.981	63963	Job.Worker 11	S	1
+29.981	63964	Job.Worker 12	S	1
+29.981	63965	Job.Worker 13	S	1
+29.981	64018	dxvk-queue	S	1
+29.981	64020	dxvk-cs	R	2
+29.981	64021	UnityGfxDeviceW	S	4
+30.084	63924	Content Manager	S	4
+30.084	63952	Job.Worker 0	S	1
+30.084	63953	Job.Worker 1	S	1
+30.084	63954	Job.Worker 2	S	1
+30.084	63955	Job.Worker 3	S	1
+30.084	63956	Job.Worker 4	S	1
+30.084	63958	Job.Worker 6	S	1
+30.084	63959	Job.Worker 7	S	1
+30.084	63960	Job.Worker 8	S	1
+30.084	63961	Job.Worker 9	S	1
+30.084	63962	Job.Worker 10	S	1
+30.084	63963	Job.Worker 11	S	1
+30.084	63964	Job.Worker 12	S	1
+30.084	63966	Job.Worker 14	S	1
+30.084	64017	dxvk-submit	S	1
+30.084	64019	dxvk-descriptor	S	1
+30.084	64020	dxvk-cs	S	2
+30.084	64021	UnityGfxDeviceW	S	5
+30.186	63924	Content Manager	S	6
+30.186	63952	Job.Worker 0	S	1
+30.186	63953	Job.Worker 1	S	2
+30.186	63954	Job.Worker 2	S	2
+30.186	63955	Job.Worker 3	S	2
+30.186	63956	Job.Worker 4	S	1
+30.186	63957	Job.Worker 5	S	2
+30.186	63958	Job.Worker 6	S	1
+30.186	63959	Job.Worker 7	S	1
+30.186	63960	Job.Worker 8	S	1
+30.186	63961	Job.Worker 9	S	1
+30.186	63962	Job.Worker 10	S	1
+30.186	63965	Job.Worker 13	S	1
+30.186	64020	dxvk-cs	S	1
+30.186	64021	UnityGfxDeviceW	S	4
+30.290	63924	Content Manager	R	4
+30.290	63953	Job.Worker 1	S	1
+30.290	63954	Job.Worker 2	S	1
+30.290	63955	Job.Worker 3	S	1
+30.290	63956	Job.Worker 4	R	1
+30.290	63957	Job.Worker 5	S	1
+30.290	63958	Job.Worker 6	S	1
+30.290	63959	Job.Worker 7	S	1
+30.290	63960	Job.Worker 8	R	0
+30.290	63961	Job.Worker 9	R	1
+30.290	63962	Job.Worker 10	S	1
+30.290	63963	Job.Worker 11	S	1
+30.290	63964	Job.Worker 12	S	1
+30.290	63965	Job.Worker 13	S	1
+30.290	63966	Job.Worker 14	S	1
+30.290	64018	dxvk-queue	S	2
+30.290	64020	dxvk-cs	S	2
+30.290	64021	UnityGfxDeviceW	R	4
+30.393	63924	Content Manager	R	4
+30.393	63952	Job.Worker 0	S	1
+30.393	63953	Job.Worker 1	S	1
+30.393	63954	Job.Worker 2	R	2
+30.393	63955	Job.Worker 3	R	1
+30.393	63956	Job.Worker 4	R	1
+30.393	63957	Job.Worker 5	S	1
+30.393	63958	Job.Worker 6	S	1
+30.393	63959	Job.Worker 7	S	1
+30.393	63960	Job.Worker 8	S	1
+30.393	63961	Job.Worker 9	S	1
+30.393	63962	Job.Worker 10	S	1
+30.393	63963	Job.Worker 11	S	1
+30.393	63964	Job.Worker 12	R	1
+30.393	63965	Job.Worker 13	S	1
+30.393	63966	Job.Worker 14	S	1
+30.393	64020	dxvk-cs	R	2
+30.393	64021	UnityGfxDeviceW	R	4
+30.496	63924	Content Manager	S	3
+30.496	63953	Job.Worker 1	S	2
+30.496	63954	Job.Worker 2	S	2
+30.496	63955	Job.Worker 3	S	2
+30.496	63956	Job.Worker 4	S	1
+30.496	63958	Job.Worker 6	S	1
+30.496	63959	Job.Worker 7	S	1
+30.496	63960	Job.Worker 8	S	1
+30.496	63961	Job.Worker 9	S	1
+30.496	63966	Job.Worker 14	S	1
+30.496	64017	dxvk-submit	S	1
+30.496	64019	dxvk-descriptor	S	1
+30.496	64020	dxvk-cs	S	1
+30.496	64021	UnityGfxDeviceW	R	5
+30.496	64024	audio_client_ma	S	1
+30.599	63924	Content Manager	S	4
+30.599	63952	Job.Worker 0	S	1
+30.599	63953	Job.Worker 1	S	1
+30.599	63954	Job.Worker 2	S	1
+30.599	63955	Job.Worker 3	S	1
+30.599	63956	Job.Worker 4	S	1
+30.599	63957	Job.Worker 5	S	1
+30.599	63960	Job.Worker 8	S	1
+30.599	63961	Job.Worker 9	S	1
+30.599	63962	Job.Worker 10	S	1
+30.599	63963	Job.Worker 11	S	2
+30.599	63964	Job.Worker 12	S	1
+30.599	63965	Job.Worker 13	S	1
+30.599	64018	dxvk-queue	S	1
+30.599	64020	dxvk-cs	S	2
+30.599	64021	UnityGfxDeviceW	S	4
+30.703	63924	Content Manager	R	8
+30.703	63955	Job.Worker 3	S	1
+30.703	63957	Job.Worker 5	S	1
+30.703	63958	Job.Worker 6	S	1
+30.703	63959	Job.Worker 7	S	1
+30.703	63960	Job.Worker 8	S	1
+30.703	63966	Job.Worker 14	S	1
+30.703	64021	UnityGfxDeviceW	S	2
+30.703	64026	Xenonauts2.exe	S	1
+30.806	63924	Content Manager	R	10
+30.806	63953	Job.Worker 1	S	1
+30.806	63954	Job.Worker 2	S	1
+30.806	63956	Job.Worker 4	R	1
+30.806	63957	Job.Worker 5	R	0
+30.806	63961	Job.Worker 9	S	1
+30.806	63962	Job.Worker 10	S	1
+30.806	63963	Job.Worker 11	S	1
+30.806	63964	Job.Worker 12	S	1
+30.806	64020	dxvk-cs	S	1
+30.806	64021	UnityGfxDeviceW	R	2
+30.806	64056	dxvk-shader-l	S	1
+30.806	64074	dxvk-frame	S	1
+30.910	63924	Content Manager	R	6
+30.910	63952	Job.Worker 0	R	1
+30.910	63953	Job.Worker 1	R	3
+30.910	63954	Job.Worker 2	S	3
+30.910	63955	Job.Worker 3	S	2
+30.910	63956	Job.Worker 4	S	2
+30.910	63957	Job.Worker 5	S	2
+30.910	63958	Job.Worker 6	S	1
+30.910	63959	Job.Worker 7	R	1
+30.910	63960	Job.Worker 8	R	1
+30.910	63961	Job.Worker 9	R	1
+30.910	63962	Job.Worker 10	S	1
+30.910	63963	Job.Worker 11	S	1
+30.910	63964	Job.Worker 12	S	1
+30.910	63965	Job.Worker 13	S	1
+30.910	63966	Job.Worker 14	R	1
+30.910	64017	dxvk-submit	S	1
+30.910	64019	dxvk-descriptor	S	1
+30.910	64020	dxvk-cs	R	4
+30.910	64021	UnityGfxDeviceW	R	6
+30.910	64024	audio_client_ma	S	1
+30.910	64028	Xenonauts2.exe	S	1
+31.013	63924	Content Manager	R	4
+31.013	63952	Job.Worker 0	S	2
+31.013	63953	Job.Worker 1	S	1
+31.013	63954	Job.Worker 2	S	1
+31.013	63955	Job.Worker 3	S	1
+31.013	63956	Job.Worker 4	S	1
+31.013	63957	Job.Worker 5	S	1
+31.013	63958	Job.Worker 6	R	2
+31.013	63959	Job.Worker 7	S	1
+31.013	63960	Job.Worker 8	R	1
+31.013	63961	Job.Worker 9	R	1
+31.013	63962	Job.Worker 10	R	1
+31.013	63963	Job.Worker 11	S	1
+31.013	63964	Job.Worker 12	S	1
+31.013	63965	Job.Worker 13	S	1
+31.013	63966	Job.Worker 14	S	1
+31.013	64020	dxvk-cs	S	2
+31.013	64021	UnityGfxDeviceW	R	6
+31.115	63924	Content Manager	S	5
+31.115	63953	Job.Worker 1	S	1
+31.115	63954	Job.Worker 2	S	1
+31.115	63955	Job.Worker 3	S	2
+31.115	63956	Job.Worker 4	S	1
+31.115	63957	Job.Worker 5	S	1
+31.115	63958	Job.Worker 6	S	1
+31.115	63959	Job.Worker 7	S	2
+31.115	63960	Job.Worker 8	S	1
+31.115	63962	Job.Worker 10	S	1
+31.115	63964	Job.Worker 12	S	1
+31.115	64018	dxvk-queue	S	1
+31.115	64019	dxvk-descriptor	S	1
+31.115	64020	dxvk-cs	S	2
+31.115	64021	UnityGfxDeviceW	R	4
+31.216	63924	Content Manager	Z	3
+31.216	64272	Thread Pool Wor	R	0
+31.316	64272	Thread Pool Wor	R	10
+31.416	64272	Thread Pool Wor	R	10
+31.517	64272	Thread Pool Wor	D	7

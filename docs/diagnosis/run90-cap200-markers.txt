@@ -1,0 +1,8 @@
+2026-10-05 21:37:03,047 XenonautsLoadScreen: Intro Complete
+2026-10-05 21:37:07,101 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 21:37:07,424 Queued LoadGameCommand:: LoadGameCommand (ReinitializeRNGSeed: True, SaveGameDescriptor: FD[UNRESOLVED]>FileSystem::C:/users/steamuser/AppData/LocalLow/Goldhawk Interactive/Xenonauts 2/Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json)
+2026-10-05 21:37:07,641 XenonautsLoadScreen: Outro Complete
+2026-10-05 21:37:07,923 XenonautsLoadScreen: Intro Complete
+2026-10-05 21:37:13,795 LoadScreen, Handling Setup for GroundCombat
+2026-10-05 21:37:24,586 XenonautsLoadScreen: Outro Complete
+2026-10-05 21:37:25,285 GCUI: BlockOnLocalPlayerTurn for 634 Player - xenonauts [TeamLink( To: 632 Team - human)]

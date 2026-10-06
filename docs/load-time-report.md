@@ -247,3 +247,34 @@ The profiler costs about 1.3 to 1.5 s on the cold load and nothing measurable on
 ### Decision: one mod with an opt-in switch
 
 `x2_load_profiler` stays a single mod. The profiler is a development tool for this repository, and the load fix, the profiler, the capture hooks and the auto-load harness share one lifecycle, one manifest and the `scripts/run.py` install and auto-load flow. Splitting would mean a second manifest, UID, `contentpacks.json` entry and install step for something a player never enables, plus either duplicated code or a shared dependency between two content packs, with no runtime gain: with the switch off the profiler patches are not applied at all, so the fix-only configuration carries zero instrumentation. The shipped default is fix only. Revisit the split only if the profiler is to be distributed to other people.
+
+## Where a bundle load's time goes (TASK-010.03, Linux)
+
+These measurements were taken on the Linux host (Flatpak Steam, game under Proton, `scripts/run.py` auto mode, shipping `log4net.xml`, profiler and capture on), not on macOS. Intro to setup is 5.9 to 6.0 s there with the shipped cap of 200 (runs 81, 85, 88, 90) against 20 to 24 s on macOS, so the 13 s, 35 per second plateau described above does not occur on this host. What carries over is how the cost behaves as the number of loads in flight grows. The macOS split still needs its own run of `scripts/sample_threads.py`.
+
+What a "load" is: every bundle file is opened once per content pack when the pack is indexed (`ContentPackState.CreateIndex`, `AssetBundle.LoadFromFileAsync`), so all bundles are resident before any load. Each of the 8808 loads is one `AssetBundle.LoadAssetAsync` on a resident bundle (`AssetBundleFileLoadOperation`). The managed API shows only request-to-start and start-to-done; Unity's read, deserialize and integrate steps inside it are visible only per thread from outside. `scripts/sample_threads.py` samples `/proc/<pid>/task/*/stat` of the Wine game process every 0.1 s. The game names its main thread "Content Manager Main Thread" (`Constants.cs`), which Linux truncates to "Content Manager". With the profiler on, `Mods/x2_load_profiler/profile.txt` now holds the per-second `UpdateTasks` lines at any log level.
+
+Cold load, pre-setup window (second `Intro Complete` to `Handling Setup`), one run per condition, raw data `docs/diagnosis/run89-cap0-*` and `run90-cap200-*`:
+
+| | Cap 200 (shipped, run 90) | No cap (`bundle_cap.txt` = 0, run 89) |
+|---|---|---|
+| Window | 5.9 s | 18.1 s |
+| Main thread CPU | 3.89 s (66%) | 15.35 s (85%) |
+| `UpdateTasks` time (profile.txt) | 2.0 s (34% of wall) | 1.8 s (10% of wall) |
+| Main thread CPU outside `UpdateTasks` | about 1.9 s | about 13.6 s |
+| `Loading.Preload` (deserialize) CPU | 2.41 s | 5.19 s |
+| `Loading.AsyncRead` (file read) CPU | 0.75 s | 0.79 s |
+| Disk-wait samples, all threads | 0 | 0 |
+| Frames per second | 35 | 17 |
+| Loads completed per frame | 21 | 14 |
+| Start-to-done, mean / max (run 81 and run 82) | 168 / 797 ms | 3442 / 13272 ms |
+| Request-to-start wait, mean / max (run 81 and run 82) | 1163 / 4366 ms | 0 / 1 ms |
+
+Findings:
+
+1. **File reading is not a cost.** The read thread uses under 0.8 s of CPU in both conditions and no thread was ever in disk wait. Reading bundles through Wine is not what limits the load on this host.
+2. **Removing the cap makes the load 12 s slower.** All 8808 requests start at once, up to 4183 are in flight, and each takes seconds to finish. Completions settle near 250 per second (about 14 per frame at 17 frames per second), close to the macOS plateau pattern.
+3. **The extra time is main-thread work outside `UpdateTasks`.** Main-thread CPU rises from 3.9 s to 15.4 s for the same loads, while the game's own polling stays at 1.8 to 2.0 s. The 11.7 s difference is not the managed polling this task's parent suspected. By elimination it is engine-side work on the main thread that grows with the number of in-flight requests (integrating finished loads and servicing the queue); `/proc` cannot name the function, and the capture cannot separate it further.
+4. **Cap 200 is not shown to be optimal.** At cap 200 neither the main thread (66%) nor the deserialize thread (41%) is saturated, and loads wait up to 4.4 s for a slot, so a higher cap below the point where the main-thread overhead appears may help. Only 25 (macOS), 200 and unlimited have been measured. This is the cap sweep of TASK-010.05.
+
+Not done: a per-load split inside `LoadAssetAsync` (the `AssetBundleRequest.progress` experiment), and bundle size and compression as predictors, because loads are single assets read from resident bundles and the capture carries no per-load file size.

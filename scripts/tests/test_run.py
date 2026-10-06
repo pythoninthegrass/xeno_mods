@@ -369,7 +369,8 @@ class PlatformDefaultsTests(unittest.TestCase):
 
     def test_click_cmd_defaults_to_the_clicker_of_each_platform(self):
         self.assertEqual(settings("darwin").click_cmd[:4], ("osascript", "-l", "JavaScript", "-e"))
-        self.assertEqual(settings("linux").click_cmd, ("xdotool", "mousemove", "{x}", "{y}", "click", "1"))
+        self.assertEqual(settings("linux").click_cmd[:2], ("sh", "-c"))
+        self.assertIn("ydotool", settings("linux").click_cmd[2])
 
 
 class CommandTemplateTests(unittest.TestCase):
@@ -388,10 +389,9 @@ class CommandTemplateTests(unittest.TestCase):
         self.assertEqual(run.launch_command(settings("linux")), list(FLATPAK_STEAM_LAUNCH))
 
     def test_click_command_fills_in_the_coordinates(self):
-        self.assertEqual(
-            run.click_command(settings("linux"), (7, 9)),
-            ["xdotool", "mousemove", "7", "9", "click", "1"],
-        )
+        argv = run.click_command(settings("linux"), (7, 9))
+        self.assertIn("$((7 / 2))", argv[2])
+        self.assertIn("$((9 / 2))", argv[2])
 
     def test_click_command_keeps_the_jxa_body_intact(self):
         argv = run.click_command(settings("darwin"), (7, 9))
@@ -542,10 +542,19 @@ class PointerTests(unittest.TestCase):
         self.assertIn(f"$(({s.park_point[0]} / 2))", argv[-1])
         self.assertNotIn("ydotool click", argv[-1])
 
-    def test_steam_clicks_are_unchanged_and_do_not_park(self):
-        self.assertEqual(settings("linux").click_cmd, ("xdotool", "mousemove", "{x}", "{y}", "click", "1"))
-        self.assertIsNone(run.park_command(settings("linux")))
+    def test_linux_clicks_and_parks_the_same_way_on_both_builds(self):
+        steam, gog = settings("linux"), settings("linux", {"BUILD": "gog"})
+        self.assertEqual(steam.click_cmd, gog.click_cmd)
+        self.assertEqual(steam.move_cmd, gog.move_cmd)
+        self.assertIsNotNone(run.park_command(steam))
+
+    def test_macos_does_not_park(self):
         self.assertIsNone(run.park_command(settings("darwin")))
+
+    def test_xdotool_is_still_available_as_an_override(self):
+        s = settings("linux", {"CLICK_CMD": "xdotool mousemove {x} {y} click 1", "MOVE_CMD": "none"})
+        self.assertEqual(run.click_command(s, (7, 9)), ["xdotool", "mousemove", "7", "9", "click", "1"])
+        self.assertIsNone(run.park_command(s))
 
     def test_park_point_and_move_command_can_be_overridden(self):
         s = settings("linux", {"PARK_POINT": "5,6", "MOVE_CMD": "mv {x} {y}"})

@@ -69,9 +69,14 @@ function click(x, y) {
 click({x}, {y});
 """
 
+# The pointer travels twice the requested distance on this host's KDE Wayland session, hence the halving; it is display and pointer-speed dependent
+YDOTOOL_MOVE = (
+    'export YDOTOOL_SOCKET="${YDOTOOL_SOCKET:-/run/user/$(id -u)/.ydotool_socket}"; '
+    "ydotool mousemove -x -5000 -y -5000 && ydotool mousemove -x $(({x} / 2)) -y $(({y} / 2))"
+)
+DEFAULT_LINUX_CLICK_CMD = ("sh", "-c", f"{YDOTOOL_MOVE} && sleep 0.3 && ydotool click 0xC0")
+DEFAULT_LINUX_MOVE_CMD = ("sh", "-c", YDOTOOL_MOVE)
 DEFAULT_MACOS_CLICK_CMD = ("osascript", "-l", "JavaScript", "-e", JXA_CLICK)
-DEFAULT_LINUX_CLICK_CMD = ("xdotool", "mousemove", "{x}", "{y}", "click", "1")
-DEFAULT_LINUX_MOVE_CMD = None
 DEFAULT_PARK_POINT = "1900,540"
 BUILDS = ("steam", "gog")
 BUILD_SPECIFIC_KEYS = {
@@ -103,13 +108,6 @@ GOG_LAUNCH_CMD = (
     "c:\\game",
     "c:\\game\\Xenonauts2.exe",
 )
-# The pointer travels twice the requested distance on this host's KDE Wayland session, hence the halving; it is display and pointer-speed dependent
-YDOTOOL_MOVE = (
-    'export YDOTOOL_SOCKET="${YDOTOOL_SOCKET:-/run/user/$(id -u)/.ydotool_socket}"; '
-    "ydotool mousemove -x -5000 -y -5000 && ydotool mousemove -x $(({x} / 2)) -y $(({y} / 2))"
-)
-GOG_CLICK_CMD = ("sh", "-c", f"{YDOTOOL_MOVE} && sleep 0.3 && ydotool click 0xC0")
-GOG_MOVE_CMD = ("sh", "-c", YDOTOOL_MOVE)
 DEFAULT_SAVE_REL = "Saves/ellz_1bf479e6/auto/auto_groundcombat_turn_10_start-62.json"
 DEFAULT_GAME_PROCESS_PATTERN = "[X]enonauts2.exe"
 DEFAULT_PLAYABLE_MARKER = "GCUI: BlockOnLocalPlayerTurn"
@@ -196,7 +194,7 @@ PLATFORM_DEFAULTS = {
 
 
 def platform_defaults(platform: str, build: str = "steam") -> PlatformDefaults:
-    """The GOG build only exists as the Minigalaxy install on Linux; its click defaults suit the Wayland session."""
+    """The GOG build only exists as the Minigalaxy install on Linux."""
     defaults = PLATFORM_DEFAULTS.get(platform, PLATFORM_DEFAULTS["linux"])
     if build != "gog":
         return defaults
@@ -209,8 +207,6 @@ def platform_defaults(platform: str, build: str = "steam") -> PlatformDefaults:
         steam_console_log="",
         steam_process_pattern="",
         launch_cmd=GOG_LAUNCH_CMD,
-        click_cmd=GOG_CLICK_CMD,
-        move_cmd=GOG_MOVE_CMD,
     )
 
 
@@ -497,6 +493,8 @@ def load_settings(cwd: Path, env: Mapping[str, str] | None = None, platform: str
     def command(key: str, default: tuple[str, ...]) -> tuple[str, ...]:
         """Overrides are shell-quoted strings; the defaults stay tuples because the JXA clicker cannot survive a split."""
         value = config(key, default="")
+        if value.strip() == "none":
+            return ()
         return tuple(shlex.split(value)) if value else default
 
     bottle = Path(config(key("BOTTLE"), default=d.bottle)).expanduser()

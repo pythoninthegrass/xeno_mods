@@ -49,7 +49,7 @@ These are the macOS preconditions. Linux has its own list under [Linux and Proto
 
 Auto mode does not touch the desktop beyond launching the game. Menu mode takes over the mouse on the desktop it runs against while it runs: do not use that desktop until it exits. It assumes the game runs full screen on the display whose size matches the click coordinates (2560x1440 points by default on macOS, 1920x1080 on Linux; see the GOG section for the table).
 
-On macOS, menu mode needs these permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand. Linux needs no equivalent, because `xdotool` posts the events through XTEST.
+On macOS, menu mode needs these permissions granted to the terminal that runs the script, under System Settings, Privacy and Security: Accessibility (to post mouse events) and Automation. Screen Recording is only needed when verifying menu coordinates with screenshots by hand. Linux needs no equivalent, but the session decides which click tool works: `ydotool` on Wayland, `xdotool` on a plain X11 session (see [Clicks on Wayland](#clicks-on-wayland)).
 
 ## Linux and Proton
 
@@ -64,7 +64,8 @@ What differs from macOS, all of it from the built-in defaults in `PLATFORM_DEFAU
 | `WINE_USER` | `crossover` | `steamuser` |
 | `LAUNCHER_APP` | the CrossOver app bundle | unset; there is no app bundle |
 | `LAUNCH_CMD` | `open {app}` | `flatpak run com.valvesoftware.Steam steam://rungameid/538030` |
-| `CLICK_CMD` | an inline `osascript -l JavaScript` program | `xdotool mousemove {x} {y} click 1` |
+| `CLICK_CMD` | an inline `osascript -l JavaScript` program | a `ydotool` move then click (Wayland) |
+| `MOVE_CMD` | unset | a `ydotool` move, parks the pointer off the HUD after each click |
 | `STEAM_CONSOLE_LOG` | inside the bottle | `/media/steam/logs/console-linux.txt` |
 | `STEAM_PROCESS_PATTERN` | `[s]team.exe` | `[s]teamwebhelper` |
 | click points | 2560x1440 | 1920x1080 (see [Clicks on Wayland](#clicks-on-wayland)) |
@@ -86,7 +87,7 @@ Linux preconditions:
 - Flatpak Steam is running and logged in, with Xenonauts 2 installed and forced to a Proton version.
 - Steam allows one game session per account. If the account is playing elsewhere, launching shows a dialog on the host's screen and the run fails with `Xenonauts2.exe did not start within N s`. Resolve it on the desktop (or use the GOG build) before rerunning.
 - Steam Cloud sync is disabled for Xenonauts 2, as on macOS.
-- A click tool matching the session is installed: `xdotool` on X11, `ydotool` on Wayland (see [Clicks on Wayland](#clicks-on-wayland)). Auto mode needs none.
+- For `--load menu` and `--warm-loads`, `ydotool` is installed and `ydotoold` is running (see [Clicks on Wayland](#clicks-on-wayland)). Auto mode needs no input.
 - `uv` is installed, for the script's shebang.
 - The mods are built into the Steam mod folder: `Directory.Build.local.props` in `src/x2_load_profiler` and `src/x2_load_timing` (gitignored) points `ModInstanceFolder` at it.
 
@@ -108,8 +109,6 @@ The settings that differ per build (`BOTTLE`, `GAME_DIR`, `DATA_DIR`, `WINE_USER
 | `GOG_GAME_DIR` | `/media/gog/Xenonauts 2` |
 | `GOG_WINE_USER` | the login name |
 | `GOG_LAUNCH_CMD` | `flatpak run --command=env io.github.sharkwouter.Minigalaxy WINEPREFIX=<sandbox prefix> WINEDEBUG=-all /app/bin/wine start /d c:\game c:\game\Xenonauts2.exe` |
-| `GOG_CLICK_CMD` | `ydotool` move then click (below) |
-| `GOG_MOVE_CMD` | `ydotool` move, used to park the pointer |
 
 The launch command is Minigalaxy's own command line, run without clicking Play. The prefix has to be given by the document-portal path Minigalaxy uses (`/run/user/<uid>/doc/<id>/gog/Xenonauts 2/prefix`), because the `c:\game` link inside the prefix is relative to that path; the host path `/media/gog/...` gives `ShellExecuteEx failed: File not found`. The `<id>` is machine specific: take it from `install_dir` in the Minigalaxy `config.json`, and set `GOG_LAUNCH_CMD` in `.env` if yours differs. The launch command must return within `LAUNCH_TIMEOUT` and the game process must appear within the same time; otherwise the run ends with `launch command failed`, `launch command did not return within N s` or `Xenonauts2.exe did not start within N s`. A game that is already running is stopped before the launch.
 
@@ -127,12 +126,12 @@ Preconditions:
 
 ### Clicks on Wayland
 
-`xdotool` cannot post events to a Wayland compositor, so the GOG build clicks with `ydotool`. Two properties of the reference host's KDE session shape the command:
+`xdotool` does not work on a Wayland session even for the game's own Xwayland window: tested with xdotool 4.20260303.1 built from source (the AlmaLinux 10 and EPEL repos do not package it), `mousemove` reports success but the real pointer does not move and `--load menu` fails with `no 'Queued LoadGameCommand' line appeared`. Both builds therefore click with `ydotool` by default, and Steam menu mode with one warm load completes (cold 18.4 s, warm 12.8 s to playable). On a plain X11 session set `CLICK_CMD=xdotool mousemove {x} {y} click 1` and `MOVE_CMD=none`. Two properties of the reference host's KDE session shape the command:
 
 - `ydotool mousemove --absolute` does not reach the requested point. The default command instead moves to the top-left corner with a large relative move and then moves `x / 2`, `y / 2`: the pointer travels twice the requested distance, which was measured by screenshot at several distances. This ratio depends on the pointer speed setting and acceleration profile, so recalibrate it if the pointer lands elsewhere.
 - The socket is `$XDG_RUNTIME_DIR/.ydotool_socket`; the command falls back to `/run/user/<uid>/.ydotool_socket` when `YDOTOOL_SOCKET` is not set.
 
-After every click the pointer is moved to `PARK_POINT` (default `1900,540`, empty right-hand edge) through `MOVE_CMD`, so no tooltip stays open over the HUD and no element keeps the focus. `MOVE_CMD` is unset on macOS and on Steam/Linux, which behave as before.
+After every click the pointer is moved to `PARK_POINT` (default `1900,540`, empty right-hand edge) through `MOVE_CMD`, so no tooltip stays open over the HUD and no element keeps the focus. `MOVE_CMD` is unset on macOS, and `MOVE_CMD=none` disables it elsewhere.
 
 Click points are screen pixels and depend on the display and the game's UI scale. The macOS defaults are 2560x1440 points; the Linux defaults (both builds) are the 1920x1080 points calibrated for the reference host (from screenshots of the main menu, the load list and the in-game menu) are:
 
